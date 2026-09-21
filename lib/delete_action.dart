@@ -50,26 +50,28 @@ class SwipeDelete extends StatefulWidget {
 class _SwipeDeleteState extends State<SwipeDelete> {
   double offset = 0;
   @override
-  Widget build(BuildContext context) => ClipRect(
+  Widget build(BuildContext context) => ClipRRect(
+    borderRadius: BorderRadius.circular(18),
     child: Stack(
       children: [
-        Positioned.fill(
-          child: Align(
-            alignment: Alignment.centerRight,
-            child: SizedBox(
-              width: 80,
-              height: double.infinity,
-              child: Material(
-                color: Theme.of(context).colorScheme.errorContainer,
-                child: IconButton(
-                  tooltip: 'Delete',
-                  onPressed: offset < -30 ? widget.onDelete : null,
-                  icon: const Icon(Icons.delete_outline),
+        if (offset < 0)
+          Positioned.fill(
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: SizedBox(
+                width: 80,
+                height: double.infinity,
+                child: Material(
+                  color: Theme.of(context).colorScheme.errorContainer,
+                  child: IconButton(
+                    tooltip: 'Delete',
+                    onPressed: offset < -30 ? widget.onDelete : null,
+                    icon: const Icon(Icons.delete_outline),
+                  ),
                 ),
               ),
             ),
           ),
-        ),
         GestureDetector(
           onHorizontalDragUpdate: (d) => setState(() {
             offset = (offset + d.delta.dx).clamp(-80, 0);

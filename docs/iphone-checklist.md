@@ -36,3 +36,14 @@ Stage 2: user-confirmed working on iPhone on 20 September 2026.
 - Deny microphone access, retry after allowing it. Background, return, restart; interrupt with a call or another audio app. Confirm the microphone indicator stops on exit.
 - Switch tuner → recorder → playback → tuner; verify there is no microphone/audio-session contention. Test Bluetooth route changes separately.
 - Check low-string stability, noisy rooms and latency. Do not infer real-instrument accuracy from synthetic-tone tests alone.
+
+
+## Stage 3 refinements + Stage 4 — 0.4
+
+- Confirm the tuner scale shows −200 to +200 cents. Manually select a string and detune across that range; readouts beyond it remain numeric while the marker reaches the edge.
+- Check the headstock: top D/G, middle A/B, bottom low E/high E for standard tuning. Circles show names only; tuning settings still show string numbers/octaves.
+- Pluck and let each string decay in quiet and ordinary background noise. Brief noise/harmonics should not steal the lock. “Holding last pitch” should clear after loss of a reliable signal. Then deliberately play another string, both loudly and softly, checking acquisition delay.
+- Compare against a trusted tuner. Temporal thresholds are initial tested defaults, not proof of real-room or commercial-tuner performance.
+- Inspect saved song and recording cards at rest: no red corners/gaps. Swipe open, cancel/confirm deletion, then verify closed clipping again.
+- Open Tab lab. Practice all four variants, then run both creation and correction for each; follow [the comparison guide](tab-lab.md).
+- Check Move, delete, insertion, re-fretting, chord stacking, undo/redo, background pause and the final feedback form. Copy the session results before leaving. No prototype content should appear in saved songs.

@@ -1,8 +1,8 @@
 # Delivery sequence
 
-## Current stage: Stage 3 — tuner and basic on-device DSP
+## Current stage: Stage 4 — tab-entry interaction prototypes
 
-Status: implemented; automated verification complete; awaiting iPhone acceptance. Stage 2 is validated on the user's actual iPhone (20 September 2026). Stage 3 needs its own hands-on acceptance session; Stage 2 validation does not certify the new PCM stream/DSP path.
+Status: Stage 4 prototypes implemented and automated checks passed; ready for iPhone comparison. Stage 3 is working on the user's iPhone; the 21 September stability, scale and headstock refinements still need hands-on comparison. Stage 4 compares interactions; Stage 5 will build the persistent editor only after the findings are reviewed.
 
 ## Stage 1 — complete: chords → local save → reopen → performance
 
@@ -15,22 +15,30 @@ Status: implemented; automated verification complete; awaiting iPhone acceptance
 
 One-tap recording, live input level, pause/resume/stop, durable unfinished-take drafts, immutable content-addressed audio, playback/seek/whole-take repeat and song attachment rows. The user reports the phone workflow works well. Unfinished audio drafts remain as protection for interrupted captures; these are not saved song versions.
 
-## Stage 3 — current: tuner and basic DSP
+## Stage 3 — iPhone-tested; tuner refinements implemented
 
 - One-tap Tuner from primary navigation; microphone use only while the tuner is active.
 - PCM16 microphone stream, local isolate-based YIN pitch detection and Hann-windowed FFT.
-- Minimal note/cents indicator; automatic closest-string target or explicit string selection.
+- Visible ±200-cent scale. Six pitch-name-only circular controls in two headstock columns; numeric string/octave labels remain elsewhere.
+- Temporal confidence/level gating, short evidence confirmation, median/log smoothing, target hysteresis, and stronger requirements for decay/harmonic jumps. A held estimate is labeled and expires after 650 ms without fresh reliable pitch.
 - Standard/Drop D presets and persistent custom six-string tuning; A4 = 440 Hz.
 - Expandable frequency, periodicity confidence, input level and live spectrum. Harmonic guides are labeled multiples of the fundamental, not independently identified partials.
 - Silence/noise gating; background/interruption stops listening, with explicit restart.
-- Automated synthetic-tone accuracy, FFT, storage migration/deletion and UI tests. Physical iPhone tuner accuracy, route changes and interruption checks remain next.
+- Synthetic-tone, decaying/noisy-signal, lock/switch behavior, FFT and UI checks. Refined tracking still needs real-guitar comparison; no claim of parity with commercial tuners.
+- Swipe backgrounds now appear only while revealed and share the card clipping boundary; recording spacing is outside that boundary.
+
+## Stage 4 — current: throwaway tab-entry prototypes
+
+Implemented in the on-device **Tab lab**: A fretboard, B1 fret-first keypad, B2 active-string keypad, C swipe/thumbwheel. Every variant has the same original reference riff and the same ten-error correction exercise, common edit/undo/redo controls, practice mode, timed trials and feedback. Results are temporary and can be copied as JSON. They never write production musical documents. See [trial instructions and metric definitions](tab-lab.md).
+
+No human comparison results exist yet. Automated tests verify interactions, not speed, frustration, eye movement or a winning design.
 
 ## Next
 
-1. Validate Stage 3 on iPhone against a trusted tuner, across standard/Drop D/custom tuning and quiet/noisy input; check tuner ↔ recording handoff, permissions and interruptions.
-2. Stage 4: basic metronome (BPM, tap tempo, time signature, accents), after tuner acceptance.
-3. Follow-up recording utility: A/B region loops, derived-asset trim and waveform. Simple notes and file interchange remain later V1 work.
-4. Run the required throwaway tab-entry/correction study before any production tab editor.
+1. Compare the refined tuner and swipe visuals on iPhone.
+2. Run Stage 4 creation and correction trials on iPhone; rotate order, try one-handed use, and copy results before leaving the lab.
+3. **Stage 5:** use those findings to choose the interaction and build the real persistent tab editor. This remains unimplemented and unselected.
+4. Later V1 work: metronome, A/B loops, derived-asset trim/waveform, simple notes and file interchange. Metronome is no longer Stage 4.
 
 Full ChordPro/file interchange, transpose/capo, tags/folders, sync/backup and the remaining V1 scope are not complete. Keep the requested plain-text interaction simple.
 

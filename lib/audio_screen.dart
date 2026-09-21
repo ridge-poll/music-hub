@@ -165,44 +165,50 @@ class _RecordingsPaneState extends State<RecordingsPane> {
               ),
             ),
           for (final take in takes)
-            SwipeDelete(
-              key: ValueKey(take.id),
-              onDelete: () async {
-                if (await confirmDelete(
-                  context,
-                  'Recording',
-                  () => widget.store.deleteRecording(take.id),
-                )) {
-                  refresh();
-                }
-              },
-              child: Card(
-                elevation: 0,
-                color: Colors.white,
-                margin: const EdgeInsets.only(bottom: 10),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  leading: const CircleAvatar(child: Icon(Icons.play_arrow)),
-                  title: Text(take.title),
-                  subtitle: Text(
-                    '${audioTime(Duration(milliseconds: take.durationMs))} · ${take.songTitle ?? 'Unattached idea'}',
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () async {
-                    await Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => PlaybackScreen(
-                          store: widget.store,
-                          files: widget.files,
-                          recording: take,
-                        ),
-                      ),
-                    );
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: SwipeDelete(
+                key: ValueKey(take.id),
+                onDelete: () async {
+                  if (await confirmDelete(
+                    context,
+                    'Recording',
+                    () => widget.store.deleteRecording(take.id),
+                  )) {
                     refresh();
-                  },
+                  }
+                },
+                child: Card(
+                  elevation: 0,
+                  color: Colors.white,
+                  margin: EdgeInsets.zero,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    leading: const CircleAvatar(child: Icon(Icons.play_arrow)),
+                    title: Text(take.title),
+                    subtitle: Text(
+                      '${audioTime(Duration(milliseconds: take.durationMs))} · ${take.songTitle ?? 'Unattached idea'}',
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () async {
+                      await Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => PlaybackScreen(
+                            store: widget.store,
+                            files: widget.files,
+                            recording: take,
+                          ),
+                        ),
+                      );
+                      refresh();
+                    },
+                  ),
                 ),
               ),
             ),

@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:record/record.dart';
 import 'dsp.dart';
+import 'pitch_tracker.dart';
 import 'store.dart';
 
 Future<PitchFrame> analyzeInBackground(List<double> samples, int rate) =>
@@ -29,6 +30,10 @@ class _TunerScreenState extends State<TunerScreen> with WidgetsBindingObserver {
   bool running = false, busy = false, processing = false, foreground = true;
   String? error;
   PitchFrame? frame;
+  final tracker = PitchTracker();
+  final trackingClock = Stopwatch()..start();
+  TrackedPitch? tracked;
+  int? autoTarget;
   List<int> tuning = [40, 45, 50, 55, 59, 64];
   int? selected;
   @override
@@ -71,6 +76,9 @@ class _TunerScreenState extends State<TunerScreen> with WidgetsBindingObserver {
     await stopping;
     if (!mounted || busy || running || !foreground) return;
     rate = 22050;
+    tracker.reset();
+    tracked = null;
+    autoTarget = null;
     setState(() {
       busy = true;
       error = null;
@@ -87,6 +95,9 @@ class _TunerScreenState extends State<TunerScreen> with WidgetsBindingObserver {
         samples.clear();
         oddByte = null;
         generation++;
+        tracker.reset();
+        tracked = null;
+        autoTarget = null;
       });
       final input = await recorder.startStream(
         const RecordConfig(
@@ -160,13 +171,21 @@ class _TunerScreenState extends State<TunerScreen> with WidgetsBindingObserver {
     final input = List<double>.of(samples),
         sampleRate = rate,
         token = generation;
-    samples.clear();
+    samples.removeRange(0, 1024);
     processing = true;
     analyzeInBackground(input, sampleRate)
         .then((value) {
           if (mounted && running && token == generation) {
             setState(() {
               frame = value;
+              tracked = tracker.update(value, trackingClock.elapsed);
+              if (tracked != null && (autoTarget == null || tracked!.newNote)) {
+                autoTarget = closestTuning(
+                  tracked!.frequency,
+                  tuning,
+                  previous: autoTarget,
+                );
+              }
             });
           }
         })
@@ -199,6 +218,9 @@ class _TunerScreenState extends State<TunerScreen> with WidgetsBindingObserver {
     if (mounted) {
       setState(() {
         frame = null;
+        tracker.reset();
+        tracked = null;
+        autoTarget = null;
       });
     }
   }
@@ -287,6 +309,7 @@ class _TunerScreenState extends State<TunerScreen> with WidgetsBindingObserver {
       if (mounted) {
         setState(() {
           tuning = result;
+          autoTarget = null;
           selected = null;
         });
       }
@@ -319,17 +342,9 @@ class _TunerScreenState extends State<TunerScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    final hz = frame?.frequency;
+    final hz = tracked?.frequency;
     final target = selected == null
-        ? (hz == null
-              ? tuning.first
-              : tuning.reduce(
-                  (a, b) =>
-                      centsFrom(hz, noteFrequency(a)).abs() <
-                          centsFrom(hz, noteFrequency(b)).abs()
-                      ? a
-                      : b,
-                ))
+        ? (autoTarget ?? tuning.first)
         : tuning[selected!];
     final cents = hz == null ? null : centsFrom(hz, noteFrequency(target));
     final inTune = cents != null && cents.abs() < 5;
@@ -353,27 +368,61 @@ class _TunerScreenState extends State<TunerScreen> with WidgetsBindingObserver {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),
-            Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 6,
-              children: [
-                ChoiceChip(
-                  label: const Text('Auto'),
-                  selected: selected == null,
-                  onSelected: (_) => setState(() {
-                    selected = null;
-                  }),
-                ),
-                for (var i = 0; i < 6; i++)
-                  ChoiceChip(
-                    label: Text(noteName(tuning[i])),
-                    selected: selected == i,
-                    onSelected: (_) => setState(() {
-                      selected = i;
-                    }),
-                  ),
-              ],
+            Center(
+              child: ChoiceChip(
+                label: const Text('Auto'),
+                selected: selected == null,
+                onSelected: (_) => setState(() {
+                  selected = null;
+                }),
+              ),
             ),
+            const SizedBox(height: 8),
+            // Face-on headstock: D/A/E on the left, G/B/E on the right.
+            for (final pair in [
+              [2, 3],
+              [1, 4],
+              [0, 5],
+            ])
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    for (final i in pair)
+                      Semantics(
+                        label: 'String ${6 - i}, ${noteName(tuning[i])}',
+                        selected: selected == i,
+                        child: SizedBox(
+                          width: 56,
+                          height: 56,
+                          child: OutlinedButton(
+                            key: ValueKey('tuner-string-$i'),
+                            style: OutlinedButton.styleFrom(
+                              shape: const CircleBorder(),
+                              padding: EdgeInsets.zero,
+                              backgroundColor:
+                                  selected == i ||
+                                      (selected == null &&
+                                          autoTarget == tuning[i])
+                                  ? const Color(0xFFD0E7DC)
+                                  : null,
+                            ),
+                            onPressed: () => setState(() {
+                              selected = i;
+                            }),
+                            child: Text(
+                              noteName(
+                                tuning[i],
+                              ).replaceAll(RegExp(r'-?\d+'), ''),
+                              style: const TextStyle(fontSize: 20),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             const SizedBox(height: 24),
             Text(
               hz == null ? '—' : noteName(target),
@@ -396,11 +445,17 @@ class _TunerScreenState extends State<TunerScreen> with WidgetsBindingObserver {
               size: const Size(double.infinity, 60),
               painter: _CentsPainter(cents),
             ),
+            const Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [Text('−200'), Text('0'), Text('+200 cents')],
+            ),
             Text(
               cents == null
                   ? 'A4 = 440 Hz'
                   : inTune
-                  ? 'In tune'
+                  ? (tracked?.held == true ? 'Holding last pitch…' : 'In tune')
+                  : tracked?.held == true
+                  ? 'Holding last pitch…'
                   : cents < 0
                   ? 'Tune up'
                   : 'Tune down',
@@ -471,13 +526,13 @@ class _CentsPainter extends CustomPainter {
       ..color = Colors.grey
       ..strokeWidth = 2;
     canvas.drawLine(Offset(0, 30), Offset(size.width, 30), pen);
-    for (final t in [-50, -25, 0, 25, 50]) {
-      final x = (t + 50) / 100 * size.width;
+    for (final t in [-200, -100, 0, 100, 200]) {
+      final x = (t + 200) / 400 * size.width;
       canvas.drawLine(Offset(x, 20), Offset(x, 40), pen);
     }
     if (cents != null) {
       canvas.drawCircle(
-        Offset((cents!.clamp(-50, 50) + 50) / 100 * size.width, 30),
+        Offset((cents!.clamp(-200, 200) + 200) / 400 * size.width, 30),
         7,
         Paint()..color = const Color(0xFF276752),
       );

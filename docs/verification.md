@@ -1,19 +1,21 @@
-# Verification — 20 September 2026, version 0.3
+# Verification — 21 September 2026, version 0.4
 
 ## Passed
 
 - Flutter static analysis: no issues.
-- 48 Dart tests covering document round trips/conversion, current-song persistence, stale-write rejection, rollback, deletion tombstones and recording detachment, database upgrades including history removal, immutable audio files and retry-safe drafts, and DSP.
+- 57 Dart tests covering document round trips/conversion, current-song persistence, stale-write rejection, rollback, deletion tombstones and recording detachment, database upgrades including history removal, immutable audio files and retry-safe drafts, DSP, temporal pitch tracking and the prototype edit/task model.
 - DSP cases include guitar-range fundamentals from 65–659 Hz at 22.05/44.1/48 kHz with DC offset and a second harmonic stronger than the fundamental. Error remains below five cents in those synthetic cases. Silence, low-level noise and broadband noise reject pitch. FFT peak/amplitude and note/cents conversion are checked.
-- Seven Flutter widget tests cover paste/save/reopen/performance, permission denial, unfinished recording preservation on backgrounding, swipe/confirmation and detail song deletion, recording swipe deletion, real PCM chunk decoding through the tuner isolate to the note display and microphone teardown, and IME-safe highlighting.
-- Editor, library, performance and tuner previews are widget renders in `screenshots/`, not physical-device captures.
+- 12 Flutter widget tests: the existing seven song/recording/tuner flows plus four phone-sized prototype entry/undo/redo/feedback flows and the lab menu/correction/results flow. The tuner test supplies multiple PCM windows to exercise confidence acquisition; closed swipe rows expose no delete background/button.
+- Rendered editor/library/performance/tuner and all four prototype previews are in `screenshots/`. Headstock labels, wide scale and active-string prototype layout were inspected at iPhone width. These are test renders, not screenshots from the user's phone.
+- Six temporal tracking tests cover jitter suppression, smooth tuning to +200 cents, unrelated transients, quiet harmonic decay, held-reading expiry, rapid new-string/octave acquisition, PCM decay/noise, and target hysteresis (several cases share a test).
+- Three prototype model tests verify creation, all ten correction instructions, and undo/redo/position edits against the same reference fixture. No usability scores or winning variant are inferred from tests.
 - Formatting and diff whitespace checks pass.
 
 ## Physical-device status
 
-Stage 2 recording/save/playback is confirmed working by the user on their actual iPhone. Stage 3 introduces a separate PCM/DSP path and still needs iPhone acceptance: compare real strings with a trusted tuner, test custom tuning, permissions, route changes, background/interruption and tuner/recording handoff. Native microphones are mocked in automated widget tests. Synthetic accuracy does not certify noisy-room or real-instrument behavior.
+Stages 2 and 3 are reported working on the user's iPhone. The new tracking thresholds, wide scale, headstock and clipping refinements still need device comparison. Stage 4 is ready for actual creation/correction trials; no human comparison results exist yet. Stage 5's persistent editor is not implemented or selected.
 
-No Stage 3 native build or phone session was performed by this tool. The prior native build attempt was blocked by nested sandbox restrictions during Swift package resolution; the user subsequently built and validated Stage 2 themselves. No Android validation or tab-entry usability study has been performed.
+Microphone sources are mocked in widget tests. Synthetic tones and scripted tracking sequences cannot certify noisy-room behavior or commercial-tuner parity. The on-device comparison guide is [tab-lab.md](tab-lab.md), and tracker behavior/limitations are in [tuner-tracking.md](tuner-tracking.md). No new native iOS/Android build or device session was performed by this tool.
 
 ## Reproduce
 
@@ -22,8 +24,8 @@ Using Flutter 3.47.5 / Dart 3.13.4:
 ```sh
 flutter pub get
 flutter analyze
-dart test test/document_test.dart test/store_test.dart test/audio_files_test.dart test/dsp_test.dart
-flutter test test/widget_test.dart
+dart test test/document_test.dart test/store_test.dart test/audio_files_test.dart test/dsp_test.dart test/pitch_tracker_test.dart test/tab_lab_model_test.dart
+flutter test test/widget_test.dart test/tab_lab_widget_test.dart
 flutter run -d <your-iphone-device-id>
 ```
 

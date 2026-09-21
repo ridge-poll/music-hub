@@ -1,3 +1,4 @@
+import 'tab_lab.dart';
 import 'delete_action.dart';
 import 'tuner_screen.dart';
 import 'dart:async';
@@ -169,6 +170,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
     bottomNavigationBar: NavigationBar(
       selectedIndex: page,
       onDestinationSelected: (index) {
+        if (index == 3) {
+          Navigator.of(
+            context,
+          ).push(MaterialPageRoute<void>(builder: (_) => const TabLabScreen()));
+          return;
+        }
         if (index == 2) {
           Navigator.of(context).push(
             MaterialPageRoute<void>(
@@ -193,6 +200,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
           label: 'Recordings',
         ),
         NavigationDestination(icon: Icon(Icons.tune), label: 'Tuner'),
+        NavigationDestination(
+          icon: Icon(Icons.science_outlined),
+          label: 'Tab lab',
+        ),
       ],
     ),
     body: SafeArea(

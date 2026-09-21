@@ -279,6 +279,7 @@ void main() {
         () => Future<void>.delayed(const Duration(milliseconds: 100)),
       );
       await tester.pumpAndSettle();
+      expect(find.byTooltip('Delete'), findsNothing);
       await tester.drag(find.byType(SwipeDelete), const Offset(-150, 0));
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Delete'));
@@ -366,9 +367,13 @@ void main() {
         () => Future<void>.delayed(const Duration(milliseconds: 100)),
       );
       await tester.pump();
+      if (i == 2 || i == 4) fake.input.add(data);
     }
     expect(find.text('In tune'), findsOneWidget);
-    expect(find.text('A2'), findsNWidgets(2));
+    expect(find.text('A2'), findsOneWidget);
+    expect(find.text('A'), findsOneWidget);
+    expect(find.text('−200'), findsOneWidget);
+    expect(find.text('+200 cents'), findsOneWidget);
     final screenshots = Platform.environment['MUSIC_HUB_SCREENSHOTS'];
     if (screenshots != null) {
       await tester.runAsync(() async {
