@@ -4,13 +4,6 @@ import 'package:sqflite_common/sqlite_api.dart';
 import 'document.dart';
 import 'recording.dart';
 
-class SavedVersion {
-  SavedVersion(this.revision, this.content, this.conflict);
-  final int revision;
-  final String content;
-  final bool conflict;
-}
-
 class MusicStore {
   MusicStore(this.db);
   final Database db;
@@ -21,10 +14,11 @@ class MusicStore {
     final f = factory;
     final p =
         location ?? path.join(await f.getDatabasesPath(), 'music_hub.sqlite');
+    var compact = false;
     final db = await f.openDatabase(
       p,
       options: OpenDatabaseOptions(
-        version: 2,
+        version: 3,
         onUpgrade: (db, old, next) async {
           if (old < 2) {
             await db.execute(
@@ -34,6 +28,13 @@ class MusicStore {
               "ALTER TABLE recordings ADD COLUMN created_at TEXT NOT NULL DEFAULT ''",
             );
           }
+          if (old < 3) {
+            await db.execute('DROP TABLE IF EXISTS document_versions');
+            compact = true;
+          }
+        },
+        onOpen: (db) async {
+          if (compact) await db.execute('VACUUM');
         },
         onConfigure: (db) async {
           await db.execute('PRAGMA foreign_keys = ON');
@@ -59,12 +60,6 @@ class MusicStore {
           );
           await db.execute(
             'CREATE TABLE chord_sheets ($stamp, arrangement_id TEXT NOT NULL REFERENCES arrangements(id), content TEXT NOT NULL)',
-          );
-          await db.execute(
-            'CREATE TABLE document_versions ($stamp, sheet_id TEXT NOT NULL REFERENCES chord_sheets(id), base_revision INTEGER NOT NULL, content TEXT NOT NULL, conflict INTEGER NOT NULL DEFAULT 0)',
-          );
-          await db.execute(
-            'CREATE INDEX versions_by_sheet ON document_versions(sheet_id, revision DESC)',
           );
           // Inert schema allowances. No analysis or tab UI is implemented in slice 1.
           await db.execute(
@@ -136,8 +131,7 @@ class MusicStore {
     };
   }
 
-  // false means a stale edit was preserved as a recoverable version; current
-  // authored content was not overwritten. All inserts/updates are atomic.
+  // Reject stale/deleted documents; keep unsaved edits in the editor.
   Future<bool> save(SongDocument song) async {
     final content = song.encode();
     final baseRevision = song.revision;
@@ -152,14 +146,6 @@ class MusicStore {
       if (current.isNotEmpty &&
           (current.single['revision'] != baseRevision ||
               current.single['deleted'] == 1)) {
-        await tx.insert('document_versions', {
-          'id': ids.v4(),
-          ...stamp,
-          'sheet_id': song.sheetId,
-          'base_revision': baseRevision,
-          'content': content,
-          'conflict': 1,
-        });
         return (false, baseRevision);
       }
       if (current.isEmpty) {
@@ -200,13 +186,6 @@ class MusicStore {
           whereArgs: [song.sheetId],
         );
       }
-      await tx.insert('document_versions', {
-        'id': ids.v4(),
-        ...stamp,
-        'sheet_id': song.sheetId,
-        'base_revision': baseRevision,
-        'content': content,
-      });
       return (true, revision);
     });
     if (result.$1) {
@@ -215,21 +194,58 @@ class MusicStore {
     return result.$1;
   }
 
-  Future<List<SavedVersion>> history(String sheetId) async =>
-      (await db.query(
-            'document_versions',
-            where: 'sheet_id = ?',
-            whereArgs: [sheetId],
-            orderBy: 'revision DESC',
-          ))
-          .map(
-            (r) => SavedVersion(
-              r['revision'] as int,
-              r['content'] as String,
-              r['conflict'] == 1,
-            ),
-          )
-          .toList();
+  Future<void> deleteSong(String id) async {
+    await db.transaction((tx) async {
+      final stamp = {...await _stamp(tx), 'deleted': 1};
+      final links = await tx.query(
+        'song_arrangements',
+        where: 'song_id = ?',
+        whereArgs: [id],
+      );
+      for (final link in links) {
+        final arrangement = link['arrangement_id'];
+        for (final table in [
+          'chord_sheets',
+          'tab_documents',
+          'section_markers',
+        ]) {
+          await tx.update(
+            table,
+            stamp,
+            where: 'arrangement_id = ?',
+            whereArgs: [arrangement],
+          );
+        }
+        await tx.update(
+          'arrangements',
+          stamp,
+          where: 'id = ?',
+          whereArgs: [arrangement],
+        );
+      }
+      for (final table in [
+        'song_arrangements',
+        'song_recordings',
+        'song_notes',
+      ]) {
+        await tx.update(table, stamp, where: 'song_id = ?', whereArgs: [id]);
+      }
+      await tx.update('songs', stamp, where: 'id = ?', whereArgs: [id]);
+    });
+  }
+
+  Future<void> deleteRecording(String id) async {
+    await db.transaction((tx) async {
+      final stamp = {...await _stamp(tx), 'deleted': 1};
+      await tx.update(
+        'song_recordings',
+        stamp,
+        where: 'recording_id = ?',
+        whereArgs: [id],
+      );
+      await tx.update('recordings', stamp, where: 'id = ?', whereArgs: [id]);
+    });
+  }
 
   Future<List<RecordingEntry>> recordings({String? songId}) async {
     final rows = await db.rawQuery(

@@ -1,6 +1,6 @@
 # Music Hub
 
-A local-first music workspace for iOS and Android, with iPhone as the lead test device. Version 0.2 adds a plain-text song editor and the first record → save → listen workflow.
+A local-first music workspace for iOS and Android, with iPhone as the lead test device. Version 0.3 adds confirmed deletion and an on-device tuner. Stage 2 recording/playback is validated on the lead iPhone.
 
 ## Song sheets
 
@@ -18,7 +18,7 @@ More lyrics here
 
 Optional `{Am}` notation gets a simple highlight while editing and a rounded label in performance mode. It remains literal text in storage. `[Intro]` is just text. This is not a ChordPro parser; the earlier limited ChordPro export button has been removed in favor of ordinary text copy/paste.
 
-Songs autosave locally and have an explicit Save action. Performance mode offers larger type, font sizing, screen-awake and automatic/manual scrolling. Saved versions can be recovered into separate songs. Older line-based songs are converted on read with all lyrics/chords retained; their historical payloads remain untouched.
+Songs autosave locally and have an explicit Save action. Performance mode offers larger type, font sizing, screen-awake and automatic/manual scrolling. Older line-based songs are converted on read with lyrics/chords retained. Saved-version history has been removed: the database upgrade deletes historical copies while retaining current songs and normal autosave.
 
 ## Recordings
 
@@ -32,9 +32,17 @@ Capture uses mono AAC in an M4A container, requesting 44.1 kHz and 128 kbps thro
 
 There is no backend or account requirement. Data stays in this app installation. Device sync and full-fidelity backup/export are not yet implemented. Wait for **Saved on this device** before force-quitting the editor; an OS kill during the 800 ms autosave delay can lose the latest unsaved keystrokes.
 
+## Delete and tune
+
+Swipe left on a saved song or recording to reveal its trash button, or use Delete Song / Delete Recording at the bottom of its detail screen. Both ask for confirmation. Deleting a song keeps its recordings as unattached ideas. Deletion uses ordered tombstones; immutable audio blobs are retained, including those shared by other recordings. There is no restore UI or audio garbage collector yet.
+
+Tap **Tuner** in primary navigation. It listens locally, shows a string target and cents, and supports automatic or manual string selection. Settings offer Standard, Drop D and custom six-string tuning saved locally. Expand Audio details for frequency, periodicity confidence, input level and a live FFT spectrum. Reference pitch is A4 = 440 Hz. No tuner audio is saved or uploaded. The tuner pauses on background/interruption; restart explicitly.
+
+Stage 3 phone acceptance is pending; see [roadmap](docs/roadmap.md) for current stage and next work. Pitch tests use synthetic tones; real guitars, rooms and microphone routes still need validation. The DSP uses the existing [record PCM stream API](https://pub.dev/packages/record), with analysis in a Dart isolate.
+
 ## Update the running iPhone app
 
-This release adds native plugins and microphone permission configuration. **Stop the previous run and do a full rebuild; hot reload alone is insufficient.** Your existing signing settings have been preserved.
+The tuner uses the native microphone plugin installed in Stage 2. **Stop the previous run and do a full rebuild; hot reload alone is insufficient.** Your existing signing settings have been preserved.
 
 From this repository in your normal development terminal:
 
@@ -45,14 +53,14 @@ flutter run -d <your-iphone-device-id>
 
 Use `flutter devices` to obtain the device ID. Do not uninstall the app to update it: install the new build over the existing app to retain the local library. Xcode 27 and Flutter are already installed on the lead development Mac. For another machine, follow [Flutter's iOS setup guide](https://docs.flutter.dev/platform-integration/ios/setup).
 
-The automated UI and persistence checks run here, but a native iOS rebuild was blocked by the tool environment's nested sandbox restriction during Swift package resolution. Actual capture, route changes and interruptions still require the [phone acceptance session](docs/iphone-checklist.md).
+Stage 2 has been tested successfully by the user on iPhone. Stage 3 is checked in automated tests here and still requires the new tuner portion of the [phone acceptance session](docs/iphone-checklist.md).
 
 ## Checks
 
 ```sh
 flutter analyze
 # Model and real SQLite/file persistence:
-dart test test/document_test.dart test/store_test.dart test/audio_files_test.dart
+dart test test/document_test.dart test/store_test.dart test/audio_files_test.dart test/dsp_test.dart
 # Phone-sized editing flow and mocked microphone lifecycle:
 flutter test test/widget_test.dart
 ```
@@ -63,7 +71,7 @@ See [verification](docs/verification.md) for results and their limits. The insta
 
 - `lib/document.dart`: exact plain-text document format and legacy conversion.
 - `lib/sheet_view.dart`: plain-text editing, optional chord styling and performance rendering.
-- `lib/store.dart`: SQLite migrations, revisions, history and recording relationships.
+- `lib/store.dart`: SQLite migrations, revisions, deletion tombstones and recording relationships.
 - `lib/audio_files.dart`: durable drafts, verified content-addressed files and retry-safe publishing.
 - `lib/audio_screen.dart`: recording, recovery, playback and attachments.
 - `lib/main.dart`: library, song editor and performance navigation.

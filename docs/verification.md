@@ -1,18 +1,19 @@
-# Verification — 20 September 2026
+# Verification — 20 September 2026, version 0.3
 
 ## Passed
 
 - Flutter static analysis: no issues.
-- 13 model, SQLite and audio-file tests: exact text round trips; legacy sheet conversion; chord-marker recognition; unsupported format rejection; save/reopen and ordered revisions; recoverable conflicting edits; transaction rollback; immutable audio persistence; content deduplication; retry-safe saving after SQL failure; tombstoned recording attachments; database migration; invalid-file rejection without draft loss.
-- Four Flutter widget tests: whole-sheet paste/save/reopen/performance at phone size; microphone denial without empty recordings; background capture finalization with a recoverable draft; editable highlighting and IME composition without text changes.
-- Rendered editor, library and performance previews are in `screenshots/`. These are widget renders, not physical-device captures. Editor icons, text spacing and controls were visually inspected. The performance footer was corrected so it no longer consumes the content area.
-- Formatting and `git diff --check` pass.
+- 48 Dart tests covering document round trips/conversion, current-song persistence, stale-write rejection, rollback, deletion tombstones and recording detachment, database upgrades including history removal, immutable audio files and retry-safe drafts, and DSP.
+- DSP cases include guitar-range fundamentals from 65–659 Hz at 22.05/44.1/48 kHz with DC offset and a second harmonic stronger than the fundamental. Error remains below five cents in those synthetic cases. Silence, low-level noise and broadband noise reject pitch. FFT peak/amplitude and note/cents conversion are checked.
+- Seven Flutter widget tests cover paste/save/reopen/performance, permission denial, unfinished recording preservation on backgrounding, swipe/confirmation and detail song deletion, recording swipe deletion, real PCM chunk decoding through the tuner isolate to the note display and microphone teardown, and IME-safe highlighting.
+- Editor, library, performance and tuner previews are widget renders in `screenshots/`, not physical-device captures.
+- Formatting and diff whitespace checks pass.
 
-## Device validation still required
+## Physical-device status
 
-The user confirmed the previous version opens on the iPhone. This version introduces native recording/playback plugins and requires a full rebuild. Xcode is installed, but this tool environment blocked Swift package resolution with `sandbox-exec: sandbox_apply: Operation not permitted`; the native iOS build did not complete here.
+Stage 2 recording/save/playback is confirmed working by the user on their actual iPhone. Stage 3 introduces a separate PCM/DSP path and still needs iPhone acceptance: compare real strings with a trusted tuner, test custom tuning, permissions, route changes, background/interruption and tuner/recording handoff. Native microphones are mocked in automated widget tests. Synthetic accuracy does not certify noisy-room or real-instrument behavior.
 
-Microphone capture, actual AAC decoding/playback, Bluetooth/routes, calls/interruptions, screen-awake and real keyboard behavior need the [iPhone checklist](iphone-checklist.md). The recording lifecycle test uses a mocked native recorder; it verifies app behavior and draft files, not audio quality or operating-system integration. Android device/build validation is also pending. No tab-entry usability study has been performed.
+No Stage 3 native build or phone session was performed by this tool. The prior native build attempt was blocked by nested sandbox restrictions during Swift package resolution; the user subsequently built and validated Stage 2 themselves. No Android validation or tab-entry usability study has been performed.
 
 ## Reproduce
 
@@ -21,9 +22,9 @@ Using Flutter 3.47.5 / Dart 3.13.4:
 ```sh
 flutter pub get
 flutter analyze
-dart test test/document_test.dart test/store_test.dart test/audio_files_test.dart
+dart test test/document_test.dart test/store_test.dart test/audio_files_test.dart test/dsp_test.dart
 flutter test test/widget_test.dart
 flutter run -d <your-iphone-device-id>
 ```
 
-Install over the existing app to preserve its local data. Dependencies are pinned in `pubspec.lock`.
+Install over the existing app. The version 3 database migration deliberately drops saved history while preserving current songs; deletion retains ordered tombstones and shared immutable audio assets. Follow the [iPhone checklist](iphone-checklist.md).

@@ -1,3 +1,5 @@
+import 'delete_action.dart';
+import 'tuner_screen.dart';
 import 'dart:async';
 import 'package:path_provider/path_provider.dart';
 
@@ -167,6 +169,14 @@ class _LibraryScreenState extends State<LibraryScreen> {
     bottomNavigationBar: NavigationBar(
       selectedIndex: page,
       onDestinationSelected: (index) {
+        if (index == 2) {
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => TunerScreen(store: widget.store),
+            ),
+          );
+          return;
+        }
         setState(() {
           page = index;
         });
@@ -182,6 +192,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
           icon: Icon(Icons.graphic_eq),
           label: 'Recordings',
         ),
+        NavigationDestination(icon: Icon(Icons.tune), label: 'Tuner'),
       ],
     ),
     body: SafeArea(
@@ -285,48 +296,64 @@ class _LibraryScreenState extends State<LibraryScreen> {
                               const SizedBox(height: 10),
                           itemBuilder: (context, index) {
                             final song = items[index];
-                            return Card(
-                              elevation: 0,
-                              color: Colors.white,
-                              margin: EdgeInsets.zero,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(18),
-                              ),
-                              child: ListTile(
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 18,
-                                  vertical: 10,
+                            return SwipeDelete(
+                              key: ValueKey(song.id),
+                              onDelete: () async {
+                                if (await confirmDelete(
+                                  context,
+                                  'Song',
+                                  () => widget.store.deleteSong(song.id),
+                                  detail:
+                                      'Recordings will remain in your library.',
+                                )) {
+                                  refresh();
+                                }
+                              },
+                              child: Card(
+                                elevation: 0,
+                                color: Colors.white,
+                                margin: EdgeInsets.zero,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(18),
                                 ),
-                                leading: Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFEAF0E6),
-                                    borderRadius: BorderRadius.circular(12),
+                                child: ListTile(
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 18,
+                                    vertical: 10,
                                   ),
-                                  child: const Icon(Icons.music_note_outlined),
-                                ),
-                                title: Text(
-                                  song.title.isEmpty
-                                      ? 'Untitled song'
-                                      : song.title,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
+                                  leading: Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFEAF0E6),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Icon(
+                                      Icons.music_note_outlined,
+                                    ),
                                   ),
-                                ),
-                                subtitle: Padding(
-                                  padding: const EdgeInsets.only(top: 4),
-                                  child: Text(
-                                    song.artist.isNotEmpty
-                                        ? song.artist
-                                        : (song.text.trim().isEmpty
-                                              ? 'Ready for an idea'
-                                              : song.text.split('\n').first),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
+                                  title: Text(
+                                    song.title.isEmpty
+                                        ? 'Untitled song'
+                                        : song.title,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
+                                  subtitle: Padding(
+                                    padding: const EdgeInsets.only(top: 4),
+                                    child: Text(
+                                      song.artist.isNotEmpty
+                                          ? song.artist
+                                          : (song.text.trim().isEmpty
+                                                ? 'Ready for an idea'
+                                                : song.text.split('\n').first),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  trailing: const Icon(Icons.chevron_right),
+                                  onTap: () => open(song),
                                 ),
-                                trailing: const Icon(Icons.chevron_right),
-                                onTap: () => open(song),
                               ),
                             );
                           },
@@ -452,7 +479,7 @@ class _EditorScreenState extends State<EditorScreen>
         } else {
           conflicted = true;
           status =
-              'Conflicting edit saved in History. Reopen the song to continue.';
+              'This song changed elsewhere. Copy your edits before reopening.';
         }
       });
       return ok;
@@ -487,87 +514,6 @@ class _EditorScreenState extends State<EditorScreen>
     );
   }
 
-  Future<void> history() async {
-    List<SavedVersion> versions;
-    try {
-      versions = await widget.store.history(song.sheetId);
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Could not load History. Please retry.'),
-          ),
-        );
-      }
-      return;
-    }
-    if (!mounted) {
-      return;
-    }
-    final chosen = await showModalBottomSheet<SavedVersion>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) => SafeArea(
-        child: Column(
-          children: [
-            const ListTile(
-              title: Text('Saved versions'),
-              subtitle: Text('Recover any version as a new song.'),
-            ),
-            Expanded(
-              child: versions.isEmpty
-                  ? const Center(child: Text('No saved versions yet.'))
-                  : ListView.builder(
-                      itemCount: versions.length,
-                      itemBuilder: (_, i) {
-                        final v = versions[i];
-                        final doc = SongDocument.decode(v.content, v.revision);
-                        return ListTile(
-                          title: Text(
-                            'Version ${v.revision}${v.conflict ? ' · recovered conflict' : ''}',
-                          ),
-                          subtitle: Text(
-                            doc.title.isEmpty ? 'Untitled song' : doc.title,
-                          ),
-                          trailing: const Icon(Icons.restore),
-                          onTap: () => Navigator.pop(context, v),
-                        );
-                      },
-                    ),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (chosen == null || !mounted) {
-      return;
-    }
-    final old = SongDocument.decode(chosen.content, chosen.revision);
-    final copy = SongDocument(
-      title: '${old.title} (recovered)',
-      artist: old.artist,
-      text: old.text,
-    );
-    try {
-      await widget.store.save(copy);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Recovered as a separate song in your library.'),
-          ),
-        );
-      }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Recovery could not be saved. Please retry.'),
-          ),
-        );
-      }
-    }
-  }
-
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
@@ -593,6 +539,31 @@ class _EditorScreenState extends State<EditorScreen>
         ),
       ),
     );
+  }
+
+  Future<void> deleteSong() async {
+    debounce?.cancel();
+    final pending = pendingSave;
+    if (pending != null) await pending;
+    if (!mounted) return;
+    if (await confirmDelete(
+          context,
+          'Song',
+          () => widget.store.deleteSong(song.id),
+          detail: 'Recordings will remain in your library.',
+        ) &&
+        mounted) {
+      setState(() {
+        dirty = false;
+      });
+      await WidgetsBinding.instance.endOfFrame;
+      if (mounted) Navigator.of(context).pop();
+    } else if (mounted && dirty) {
+      debounce = Timer(
+        const Duration(milliseconds: 800),
+        () => unawaited(save()),
+      );
+    }
   }
 
   Future<void> reload() async {
@@ -638,11 +609,6 @@ class _EditorScreenState extends State<EditorScreen>
         ),
         title: const Text('Song'),
         actions: [
-          IconButton(
-            tooltip: 'Saved versions',
-            onPressed: history,
-            icon: const Icon(Icons.history),
-          ),
           TextButton(
             onPressed: saving ? null : save,
             child: const Text('Save'),
@@ -724,7 +690,7 @@ class _EditorScreenState extends State<EditorScreen>
                   if (conflicted)
                     TextButton(
                       onPressed: reload,
-                      child: const Text('Reopen saved song'),
+                      child: const Text('Reopen (discards unsaved edits)'),
                     ),
                 ],
               ),
@@ -768,6 +734,14 @@ class _EditorScreenState extends State<EditorScreen>
                       label: const Text('Play'),
                     ),
                   ],
+                ),
+              ),
+            if (MediaQuery.viewInsetsOf(context).bottom == 0)
+              TextButton(
+                onPressed: saving ? null : deleteSong,
+                child: const Text(
+                  'Delete Song',
+                  style: TextStyle(color: Colors.red),
                 ),
               ),
           ],

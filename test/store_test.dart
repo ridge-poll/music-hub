@@ -44,7 +44,12 @@ void main() {
       expect(reopened.revision, greaterThan(firstRevision));
       expect((await store.db.query('arrangements')).length, 1);
       expect((await store.db.query('song_arrangements')).length, 1);
-      expect((await store.history(song.sheetId)).length, 2);
+      expect(
+        await store.db.rawQuery(
+          "SELECT name FROM sqlite_master WHERE name='document_versions'",
+        ),
+        isEmpty,
+      );
       expect((await store.db.query('candidates')), isEmpty);
     },
   );
@@ -59,11 +64,59 @@ void main() {
     await store.save(a);
     expect(await store.save(b), false);
     expect((await store.list()).single.title, 'First edit');
-    final history = await store.history(b.sheetId);
-    expect(history.first.conflict, true);
-    expect(SongDocument.decode(history.first.content, 0).title, 'Second edit');
-    expect(history.map((v) => v.revision).toSet().length, 3);
+    expect(b.title, 'Second edit');
   });
+
+  test(
+    'delete song keeps recordings unattached and stale saves cannot resurrect it',
+    () async {
+      final song = SongDocument(title: 'Delete me');
+      await store.save(song);
+      await store.saveRecording(
+        id: 'take',
+        title: 'Take',
+        hash: 'hash',
+        relativePath: 'audio.m4a',
+        durationMs: 1000,
+        createdAt: '',
+        songId: song.id,
+      );
+      await store.deleteSong(song.id);
+      expect(await store.list(), isEmpty);
+      expect(await store.save(song), false);
+      expect((await store.recordings()).single.songId, isNull);
+      await store.deleteRecording('take');
+      expect(await store.recordings(), isEmpty);
+      expect((await store.db.query('recordings')).single['deleted'], 1);
+      expect((await store.db.query('song_recordings')).single['deleted'], 1);
+    },
+  );
+
+  test(
+    'version 2 migration drops history and preserves current song',
+    () async {
+      final song = SongDocument(title: 'Keep me', text: 'Latest');
+      await store.save(song);
+      await store.db.execute('CREATE TABLE document_versions (content TEXT)');
+      await store.db.execute(
+        "INSERT INTO document_versions VALUES ('old history')",
+      );
+      await store.db.setVersion(2);
+      await store.close();
+      store = await MusicStore.open(
+        factory: databaseFactoryFfi,
+        location: location,
+      );
+      expect((await store.list()).single.text, 'Latest');
+      expect(
+        await store.db.rawQuery(
+          "SELECT name FROM sqlite_master WHERE name='document_versions'",
+        ),
+        isEmpty,
+      );
+      expect(await store.db.getVersion(), 3);
+    },
+  );
 
   test(
     'a failed transaction never creates a partial song or advances caller revision',

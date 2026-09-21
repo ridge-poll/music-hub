@@ -4,7 +4,7 @@ Rebuild with `flutter pub get` then `flutter run -d <device-id>`. Install over t
 
 ## Sheet editing
 
-1. Open a song saved in 0.1. Verify all lyrics and chords survived; older chords become `{Chord}` markers at their original lyric anchors. Open History and recover an older version.
+1. Open a song saved in 0.1. Verify all lyrics and chords survived; older chords become `{Chord}` markers at their original lyric anchors. Verify the history action is absent after upgrading to 0.3.
 2. Paste a complete multiline sheet, including `[Intro]`, aligned spaces, blank lines, `{Am}`, ordinary `C/G`, emoji and unfinished braces. Edit anywhere, select across lines, copy/paste and undo/redo.
 3. Save, leave, reopen, then relaunch in airplane mode. Confirm the full text is unchanged. Long lines should scroll sideways without rewriting spaces.
 4. Enter performance mode. Confirm the sheet is visible, `{Am}` has a rounded label and ordinary text stays plain. Check larger/smaller text, horizontal scrolling of wide lines, manual/automatic vertical scrolling and screen-awake.
@@ -22,3 +22,17 @@ Rebuild with `flutter pub get` then `flutter run -d <device-id>`. Install over t
 8. Test a several-minute capture and low-storage/error behavior. A failed save must retain recoverable captured bytes; a force-killed M4A may be incomplete and should not be represented as a valid playable recording.
 
 Trim, A/B region loops, waveform display, external audio import and background capture are not part of this update. Whole-recording repeat is available. Do not uninstall the app as a recovery step: its library is currently device-local.
+
+## Stage 3 acceptance — 0.3
+
+Stage 2: user-confirmed working on iPhone on 20 September 2026.
+
+- Upgrade over the installed app: current songs/recordings remain; saved history button is gone.
+- Swipe left on a song and a recording. Trash appears on the right. Cancel preserves the item; confirm removes it. Repeat using each detail screen's bottom Delete action.
+- Delete a song with recordings: recordings remain in the main list as unattached ideas.
+- Tap Tuner from the main navigation: note/cents responds to single guitar strings; compare all six strings against a trusted tuner. Silence should clear the note instead of freezing the last reading.
+- Select a string manually; test sharp/flat/in-tune indications. Try Drop D and a custom tuning; close/reopen to verify persistence.
+- Expand Audio details: frequency, confidence and spectrum reflect microphone input. Harmonic guides are calculated multiples, not measured harmonic detections.
+- Deny microphone access, retry after allowing it. Background, return, restart; interrupt with a call or another audio app. Confirm the microphone indicator stops on exit.
+- Switch tuner → recorder → playback → tuner; verify there is no microphone/audio-session contention. Test Bluetooth route changes separately.
+- Check low-string stability, noisy rooms and latency. Do not infer real-instrument accuracy from synthetic-tone tests alone.

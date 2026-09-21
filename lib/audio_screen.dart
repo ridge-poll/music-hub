@@ -1,3 +1,4 @@
+import 'delete_action.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:audio_session/audio_session.dart';
@@ -164,33 +165,45 @@ class _RecordingsPaneState extends State<RecordingsPane> {
               ),
             ),
           for (final take in takes)
-            Card(
-              elevation: 0,
-              color: Colors.white,
-              margin: const EdgeInsets.only(bottom: 10),
-              child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                leading: const CircleAvatar(child: Icon(Icons.play_arrow)),
-                title: Text(take.title),
-                subtitle: Text(
-                  '${audioTime(Duration(milliseconds: take.durationMs))} · ${take.songTitle ?? 'Unattached idea'}',
-                ),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () async {
-                  await Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => PlaybackScreen(
-                        store: widget.store,
-                        files: widget.files,
-                        recording: take,
-                      ),
-                    ),
-                  );
+            SwipeDelete(
+              key: ValueKey(take.id),
+              onDelete: () async {
+                if (await confirmDelete(
+                  context,
+                  'Recording',
+                  () => widget.store.deleteRecording(take.id),
+                )) {
                   refresh();
-                },
+                }
+              },
+              child: Card(
+                elevation: 0,
+                color: Colors.white,
+                margin: const EdgeInsets.only(bottom: 10),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  leading: const CircleAvatar(child: Icon(Icons.play_arrow)),
+                  title: Text(take.title),
+                  subtitle: Text(
+                    '${audioTime(Duration(milliseconds: take.durationMs))} · ${take.songTitle ?? 'Unattached idea'}',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () async {
+                    await Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => PlaybackScreen(
+                          store: widget.store,
+                          files: widget.files,
+                          recording: take,
+                        ),
+                      ),
+                    );
+                    refresh();
+                  },
+                ),
               ),
             ),
         ],
@@ -990,6 +1003,21 @@ class _PlaybackScreenState extends State<PlaybackScreen>
             onPressed: attach,
             icon: const Icon(Icons.link),
             label: const Text('Attach to a song'),
+          ),
+          TextButton(
+            onPressed: () async {
+              if (await confirmDelete(context, 'Recording', () async {
+                    await player.stop();
+                    await widget.store.deleteRecording(widget.recording.id);
+                  }) &&
+                  context.mounted) {
+                Navigator.of(context).pop();
+              }
+            },
+            child: const Text(
+              'Delete Recording',
+              style: TextStyle(color: Colors.red),
+            ),
           ),
           const SizedBox(height: 12),
           const Text(

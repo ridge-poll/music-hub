@@ -1,23 +1,38 @@
 # Delivery sequence
 
-## Slice 1: chords → local save → reopen → performance
+## Current stage: Stage 3 — tuner and basic on-device DSP
 
-- Direct library opening; create without organizing first.
-- Hidden default arrangement, clean authored native chord sheet, SQLite transactions.
-- One continuous plain-text editor, native selection/copy/paste and undo/redo (updated per user feedback).
-- Optional `{Chord}` styling; spaces and section labels remain literal text. Legacy songs and history stay readable.
-- Debounced autosave, explicit Save and save-before-navigation, visible failure state.
-- Recover saved versions as separate songs.
-- Performance screen in one tap; font size, manual scrolling, auto-scroll speed, keep-awake.
-- Native plain text replaces the limited ChordPro copy action; full format/file interchange remains deferred.
+Status: implemented; automated verification complete; awaiting iPhone acceptance. Stage 2 is validated on the user's actual iPhone (20 September 2026). Stage 3 needs its own hands-on acceptance session; Stage 2 validation does not certify the new PCM stream/DSP path.
 
-Remaining V1 chord work: file interchange with loss reporting, transpose and capo if useful, and real-device Unicode/IME/large-text polish. Keep the requested plain-text interaction simple; do not reintroduce structured line editing. Tags/folders, standalone notes, tuner, metronome and other V1 features remain future slices. The first slice is not all of V1.
+## Stage 1 — complete: chords → local save → reopen → performance
 
-## Slice 2: record → save → playback
+- One continuous plain-text editor, paste/select/undo/redo, optional `{Chord}` styling, preserved spaces and section labels.
+- Local SQLite autosave, explicit Save, legacy document conversion and one-tap performance mode with font sizing, scrolling and keep-awake.
+- Saved-version/history UI and storage removed at the user's request in 0.3. Migration drops old versions and reclaims database space; current songs remain. Unsaved stale edits are rejected in place rather than overwriting current content.
+- Confirmed deletion from swipe-revealed trash buttons and detail screens. Ordered tombstones prevent resurrection. Deleting a song leaves its recordings unattached; deleting a recording hides it without breaking shared immutable audio assets.
 
-Implemented in 0.2: one-tap recording from the library, input metering, pause/resume/stop, durable drafts, immutable content-addressed audio, local playback/seek/repeat, and separate song attachment rows. Native interruption policy is pause/manual resume; backgrounding finalizes to a draft. Validate these behaviors on the iPhone before expanding.
+## Stage 2 — complete and iPhone-validated: record → save → playback
 
-Next: native audio acceptance, A/B region loops, then derived-asset trim and useful waveform rendering. No source separation or ML.
+One-tap recording, live input level, pause/resume/stop, durable unfinished-take drafts, immutable content-addressed audio, playback/seek/whole-take repeat and song attachment rows. The user reports the phone workflow works well. Unfinished audio drafts remain as protection for interrupted captures; these are not saved song versions.
+
+## Stage 3 — current: tuner and basic DSP
+
+- One-tap Tuner from primary navigation; microphone use only while the tuner is active.
+- PCM16 microphone stream, local isolate-based YIN pitch detection and Hann-windowed FFT.
+- Minimal note/cents indicator; automatic closest-string target or explicit string selection.
+- Standard/Drop D presets and persistent custom six-string tuning; A4 = 440 Hz.
+- Expandable frequency, periodicity confidence, input level and live spectrum. Harmonic guides are labeled multiples of the fundamental, not independently identified partials.
+- Silence/noise gating; background/interruption stops listening, with explicit restart.
+- Automated synthetic-tone accuracy, FFT, storage migration/deletion and UI tests. Physical iPhone tuner accuracy, route changes and interruption checks remain next.
+
+## Next
+
+1. Validate Stage 3 on iPhone against a trusted tuner, across standard/Drop D/custom tuning and quiet/noisy input; check tuner ↔ recording handoff, permissions and interruptions.
+2. Stage 4: basic metronome (BPM, tap tempo, time signature, accents), after tuner acceptance.
+3. Follow-up recording utility: A/B region loops, derived-asset trim and waveform. Simple notes and file interchange remain later V1 work.
+4. Run the required throwaway tab-entry/correction study before any production tab editor.
+
+Full ChordPro/file interchange, transpose/capo, tags/folders, sync/backup and the remaining V1 scope are not complete. Keep the requested plain-text interaction simple.
 
 ## Tab interaction gate
 

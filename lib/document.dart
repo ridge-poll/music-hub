@@ -54,7 +54,7 @@ class SongDocument {
   }
 }
 
-// Lazy, lossless content migration. Old history payloads are left untouched.
+// Lazy content migration for current legacy documents.
 // Inserting a marker at the old UTF-16 anchor preserves every original lyric
 // character and chord, including repeated chords at the same position.
 String _legacyText(List lines) => lines
