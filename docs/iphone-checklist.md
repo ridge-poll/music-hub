@@ -47,3 +47,16 @@ Stage 2: user-confirmed working on iPhone on 20 September 2026.
 - Inspect saved song and recording cards at rest: no red corners/gaps. Swipe open, cancel/confirm deletion, then verify closed clipping again.
 - Open Tab lab. Practice all four variants, then run both creation and correction for each; follow [the comparison guide](tab-lab.md).
 - Check Move, delete, insertion, re-fretting, chord stacking, undo/redo, background pause and the final feedback form. Copy the session results before leaving. No prototype content should appear in saved songs.
+
+
+## Stage 5 acceptance — 0.5
+
+Stage 4 decision: after testing the prototypes, the user chose an ordinary spreadsheet-style text grid. The old prototype checklist is historical; Tab lab is no longer in navigation.
+
+- Open a saved or new song → Tab. Verify six string rows, twelve ordered columns and ordinary keyboard input.
+- Enter `3`, `0`, `0h2`, `3/5`, `7\6`, `x`, `:)`, spaces, Unicode and other text. Save, return to the song, reopen; verify exact content.
+- Tap another cell, use keyboard Next and each arrow. The keyboard should stay open. Test the actual iOS keyboard, selection, paste and dictation/IME behavior; widget tests cannot fully certify native keyboard behavior.
+- Scroll columns horizontally: S1–S6 labels stay visible. Add another block with the bottom + button while the keyboard is open; focus should move into the new block without dismissing input.
+- Restart the app after Saved on this device; confirm block count, text and song separation. Confirm chord-sheet edits do not replace tabs or vice versa.
+- Delete the song and verify it stays deleted. Open swipe-to-delete on songs/recordings and inspect for a continuous red reveal with no normal-background seam.
+- Confirm room-acoustics profiling appears only in the roadmap; no excitation or profiling feature is added in this release.

@@ -1,6 +1,6 @@
 # Music Hub
 
-A local-first music workspace for iOS and Android, with iPhone as the lead test device. Version 0.3 adds confirmed deletion and an on-device tuner. Stage 2 recording/playback is validated on the lead iPhone.
+A local-first music workspace for iOS and Android, with iPhone as the lead test device. Version 0.5 adds a persistent free-form tab grid, selected after the Stage 4 iPhone prototype comparison.
 
 ## Song sheets
 
@@ -19,6 +19,12 @@ More lyrics here
 Optional `{Am}` notation gets a simple highlight while editing and a rounded label in performance mode. It remains literal text in storage. `[Intro]` is just text. This is not a ChordPro parser; the earlier limited ChordPro export button has been removed in favor of ordinary text copy/paste.
 
 Songs autosave locally and have an explicit Save action. Performance mode offers larger type, font sizing, screen-awake and automatic/manual scrolling. Older line-based songs are converted on read with lyrics/chords retained. Saved-version history has been removed: the database upgrade deletes historical copies while retaining current songs and normal autosave.
+
+## Tabs
+
+Open a song and tap **Tab**. Start with six string rows and twelve columns; type any text into a cell using the normal keyboard. Frets, techniques, punctuation and other text are preserved without interpretation. Use keyboard Next or the arrow toolbar to move cells while keeping the keyboard open. String labels stay visible while columns scroll horizontally. Add another six-row block when needed.
+
+Blocks are consecutive chunks of the same tab. Columns have stable IDs and order, but no beats or durations. Tabs autosave locally under the song's hidden arrangement, independently of its chord/lyric sheet. Save explicitly or wait for Saved on this device before force-quitting. Tab lab is retired from navigation; Stage 4 selected this simpler grid. See [the roadmap](docs/roadmap.md).
 
 ## Recordings
 
@@ -60,9 +66,9 @@ Stage 2 has been tested successfully by the user on iPhone. Stage 3 is checked i
 ```sh
 flutter analyze
 # Model and real SQLite/file persistence:
-dart test test/document_test.dart test/store_test.dart test/audio_files_test.dart test/dsp_test.dart
+dart test test/document_test.dart test/store_test.dart test/audio_files_test.dart test/dsp_test.dart test/pitch_tracker_test.dart test/tab_document_test.dart
 # Phone-sized editing flow and mocked microphone lifecycle:
-flutter test test/widget_test.dart
+flutter test test/widget_test.dart test/tab_screen_test.dart
 ```
 
 See [verification](docs/verification.md) for results and their limits. The installed SDK is Flutter 3.47.5 / Dart 3.13.4. Keep `pubspec.lock` under version control.
@@ -75,6 +81,7 @@ See [verification](docs/verification.md) for results and their limits. The insta
 - `lib/audio_files.dart`: durable drafts, verified content-addressed files and retry-safe publishing.
 - `lib/audio_screen.dart`: recording, recovery, playback and attachments.
 - `lib/main.dart`: library, song editor and performance navigation.
+- `lib/tab_document.dart` and `lib/tab_screen.dart`: stable ordered positions, exact text cells, keyboard navigation and autosave.
 - `docs/screenshots/`: rendered widget previews, not physical-device captures.
 
 ## GitHub

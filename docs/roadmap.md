@@ -1,8 +1,8 @@
 # Delivery sequence
 
-## Current stage: Stage 4 — tab-entry interaction prototypes
+## Current stage: Stage 5 — persistent free-form tab grid
 
-Status: Stage 4 prototypes implemented and automated checks passed; ready for iPhone comparison. Stage 3 is working on the user's iPhone; the 21 September stability, scale and headstock refinements still need hands-on comparison. Stage 4 compares interactions; Stage 5 will build the persistent editor only after the findings are reviewed.
+Status: Stage 5 implemented; automated checks passed; ready for iPhone acceptance. Following hands-on Stage 4 testing, the user chose a much simpler spreadsheet-style text grid instead of specialized fret/string entry. This is the accepted interaction direction; no additional prototype-selection gate remains.
 
 ## Stage 1 — complete: chords → local save → reopen → performance
 
@@ -27,31 +27,33 @@ One-tap recording, live input level, pause/resume/stop, durable unfinished-take 
 - Synthetic-tone, decaying/noisy-signal, lock/switch behavior, FFT and UI checks. Refined tracking still needs real-guitar comparison; no claim of parity with commercial tuners.
 - Swipe backgrounds now appear only while revealed and share the card clipping boundary; recording spacing is outside that boundary.
 
-## Stage 4 — current: throwaway tab-entry prototypes
+## Stage 4 — complete: interaction study and user decision
 
-Implemented in the on-device **Tab lab**: A fretboard, B1 fret-first keypad, B2 active-string keypad, C swipe/thumbwheel. Every variant has the same original reference riff and the same ten-error correction exercise, common edit/undo/redo controls, practice mode, timed trials and feedback. Results are temporary and can be copied as JSON. They never write production musical documents. See [trial instructions and metric definitions](tab-lab.md).
+The fretboard, fret-first keypad, active-string keypad and thumbwheel prototypes were tested by the user on iPhone. Their qualitative finding was that specialized input added unnecessary complexity. The chosen direction is ordinary editable text cells. No quantitative scores or ranking are inferred. Tab lab has been removed from app navigation; its source and [study guide](tab-lab.md) remain historical prototypes, separate from production storage.
 
-No human comparison results exist yet. Automated tests verify interactions, not speed, frustration, eye movement or a winning design.
+## Stage 5 — current: persistent free-form tab editor
+
+- Open **Tab** from a song. The tab belongs to that song's hidden arrangement, stored independently of the chord/lyric sheet.
+- Start with one block of six string rows and 12 columns. Each cell is an ordinary free-form text field: no fret, technique or notation validation, and no interpretation. Preserve text exactly, including spaces, punctuation, Unicode and pasted line breaks.
+- Normal keyboard entry, direct cell taps, next/previous and up/down controls, keyboard Next, and horizontal scrolling. Moving cells transfers focus without intentionally dismissing the keyboard; Done dismisses it.
+- Add another six-row/12-column block as the tab grows. Blocks are consecutive display chunks of one tab, not musical sections.
+- Columns have stable client UUIDs and explicit array order across all blocks. No beats, durations or rhythmic meaning are assigned. Future timing/audio associations can reference a column without reinterpreting current text.
+- Local debounced autosave, explicit Save, save-before-navigation, monotonic document revisions and stale/deleted-parent protection. No saved-version history is reintroduced.
+- Swipe-delete refinement: the red region extends behind the moving rounded card so the revealed area stays continuously red.
 
 ## Next
 
-1. Compare the refined tuner and swipe visuals on iPhone.
-2. Run Stage 4 creation and correction trials on iPhone; rotate order, try one-handed use, and copy results before leaving the lab.
-3. **Stage 5:** use those findings to choose the interaction and build the real persistent tab editor. This remains unimplemented and unselected.
-4. Later V1 work: metronome, A/B loops, derived-asset trim/waveform, simple notes and file interchange. Metronome is no longer Stage 4.
+1. Validate Stage 5 on iPhone: arbitrary text, keyboard-preserving navigation, additional blocks, local save/reopen and song isolation. Check swipe reveal continuity.
+2. Refine the grid only from actual usage; do not reintroduce specialized fret/keypad entry or musical parsing without a new decision.
+3. Remaining V1 work: metronome, A/B loops, derived-asset trim/waveform, simple notes and file interchange. Priorities beyond Stage 5 remain to be chosen.
 
-Full ChordPro/file interchange, transpose/capo, tags/folders, sync/backup and the remaining V1 scope are not complete. Keep the requested plain-text interaction simple.
+Full ChordPro/file interchange, transpose/capo, tags/folders, sync/backup and the remaining V1 scope are not complete.
 
-## Tab interaction gate
+## Later DSP tools — room-acoustics profiling (idea only)
 
-Build separate disposable prototypes without production data behind them:
-A fretboard tap; B1 fret-first; B2 persistent active string; C swipe/thumbwheel.
-Do not choose a production variant from this document. Test each in counterbalanced order with the same tasks after a short familiarization period.
+Explore phone-based characterization of the surrounding acoustic environment, potentially by playing a known swept-sine/chirp excitation and recording the response to estimate a room impulse response. A musician-facing view could expose reverberation/decay time, frequency-dependent decay and prominent resonances/room modes, with raw impulse response and spectrum in an expandable technical view.
 
-1. Creation: enter the same known riff from scratch.
-2. Correction: fix ten predefined mistakes covering insert, delete, move, re-fret and notes-to-chord conversion.
-
-Record elapsed time, total taps, errors, undo count, frustration (1–7), observed keypad/tab gaze switches, one-handed completion and comments. Record correction independently and weight it as strongly as creation. Eye movements require observation/user reporting, not invented automatic telemetry. Prefer B-family for the real implementation only after examining test results. No test participants or findings exist yet.
+This is firmly later-roadmap research: no excitation playback, response capture, deconvolution, measurement claims or UI are implemented now. Future feasibility work must distinguish room behavior from the phone speaker/microphone response and assess repeatability before presenting measurements.
 
 ## Product boundaries
 

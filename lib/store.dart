@@ -3,6 +3,7 @@ import 'package:sqflite_common/sqlite_api.dart';
 
 import 'document.dart';
 import 'recording.dart';
+import 'tab_document.dart';
 
 class MusicStore {
   MusicStore(this.db);
@@ -192,6 +193,66 @@ class MusicStore {
       song.revision = result.$2;
     }
     return result.$1;
+  }
+
+  Future<TabDocument> loadTab(String arrangementId) async {
+    final rows = await db.query(
+      'tab_documents',
+      where: 'arrangement_id = ? AND deleted = 0',
+      whereArgs: [arrangementId],
+    );
+    if (rows.isEmpty) return TabDocument(arrangementId: arrangementId);
+    if (rows.length != 1) {
+      throw StateError('Multiple tab documents for this arrangement');
+    }
+    return TabDocument.decode(
+      rows.single['content'] as String,
+      rows.single['revision'] as int,
+    );
+  }
+
+  Future<bool> saveTab(TabDocument tab) async {
+    final content = tab.encode();
+    final revision = await db.transaction<int?>((tx) async {
+      final parents = await tx.query(
+        'arrangements',
+        where: 'id = ? AND deleted = 0',
+        whereArgs: [tab.arrangementId],
+      );
+      if (parents.isEmpty) return null;
+      final rows = await tx.query(
+        'tab_documents',
+        where: 'arrangement_id = ?',
+        whereArgs: [tab.arrangementId],
+      );
+      if (rows.isNotEmpty &&
+          (rows.length != 1 ||
+              rows.single['id'] != tab.id ||
+              rows.single['revision'] != tab.revision ||
+              rows.single['deleted'] == 1)) {
+        return null;
+      }
+      final stamp = await _stamp(tx);
+      if (rows.isEmpty) {
+        await tx.insert('tab_documents', {
+          'id': tab.id,
+          ...stamp,
+          'arrangement_id': tab.arrangementId,
+          'content': content,
+        });
+      } else {
+        await tx.update(
+          'tab_documents',
+          {...stamp, 'content': content},
+          where: 'id = ?',
+          whereArgs: [tab.id],
+        );
+      }
+      return stamp['revision'] as int;
+    });
+    if (revision == null) return false;
+    tab.revision = revision;
+    return true;
   }
 
   Future<void> deleteSong(String id) async {

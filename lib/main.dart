@@ -1,4 +1,4 @@
-import 'tab_lab.dart';
+import 'tab_screen.dart';
 import 'delete_action.dart';
 import 'tuner_screen.dart';
 import 'dart:async';
@@ -170,12 +170,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
     bottomNavigationBar: NavigationBar(
       selectedIndex: page,
       onDestinationSelected: (index) {
-        if (index == 3) {
-          Navigator.of(
-            context,
-          ).push(MaterialPageRoute<void>(builder: (_) => const TabLabScreen()));
-          return;
-        }
         if (index == 2) {
           Navigator.of(context).push(
             MaterialPageRoute<void>(
@@ -200,10 +194,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
           label: 'Recordings',
         ),
         NavigationDestination(icon: Icon(Icons.tune), label: 'Tuner'),
-        NavigationDestination(
-          icon: Icon(Icons.science_outlined),
-          label: 'Tab lab',
-        ),
       ],
     ),
     body: SafeArea(
@@ -536,6 +526,15 @@ class _EditorScreenState extends State<EditorScreen>
     super.dispose();
   }
 
+  Future<void> openTab() async {
+    if (!await save() || !mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => TabScreen(store: widget.store, song: song),
+      ),
+    );
+  }
+
   Future<void> recordForSong() async {
     FocusScope.of(context).unfocus();
     if (!await save() || !mounted) {
@@ -731,14 +730,16 @@ class _EditorScreenState extends State<EditorScreen>
                   horizontal: 16,
                   vertical: 8,
                 ),
-                child: Row(
+                child: Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  spacing: 8,
                   children: [
                     TextButton.icon(
                       onPressed: recordForSong,
                       icon: const Icon(Icons.graphic_eq),
                       label: const Text('Recordings'),
                     ),
-                    const Spacer(),
+                    TextButton(onPressed: openTab, child: const Text('Tab')),
                     FilledButton.icon(
                       onPressed: perform,
                       icon: const Icon(Icons.play_arrow),

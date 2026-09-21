@@ -59,14 +59,21 @@ class _SwipeDeleteState extends State<SwipeDelete> {
             child: Align(
               alignment: Alignment.centerRight,
               child: SizedBox(
-                width: 80,
+                width: 100,
                 height: double.infinity,
                 child: Material(
                   color: Theme.of(context).colorScheme.errorContainer,
-                  child: IconButton(
-                    tooltip: 'Delete',
-                    onPressed: offset < -30 ? widget.onDelete : null,
-                    icon: const Icon(Icons.delete_outline),
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: SizedBox(
+                      width: 80,
+                      height: double.infinity,
+                      child: IconButton(
+                        tooltip: 'Delete',
+                        onPressed: offset < -30 ? widget.onDelete : null,
+                        icon: const Icon(Icons.delete_outline),
+                      ),
+                    ),
                   ),
                 ),
               ),
