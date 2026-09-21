@@ -6,6 +6,8 @@
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Record your own riffs, songs, and musical ideas on this device.</string>
 	<key>CFBundleDisplayName</key>
 	<string>Music Hub</string>
 	<key>CFBundleExecutable</key>

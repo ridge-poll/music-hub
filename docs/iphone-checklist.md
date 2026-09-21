@@ -1,15 +1,24 @@
-# First iPhone acceptance session
+# Version 0.2 iPhone acceptance session
 
-Run a debug or release build on the phone; disconnect it and enable airplane mode.
+Rebuild with `flutter pub get` then `flutter run -d <device-id>`. Install over the existing app. Native plugin additions cannot be tested with hot reload alone.
 
-1. Open to the song library, tap New song, enter title and lyric text.
-2. Place the lyric cursor at a word and tap + Chord. Enter Am, then add C/G elsewhere. Confirm labels align above their lyric fragments.
-3. Edit text before and under anchors; edit/remove a chord by tapping it.
-4. Wait for “Saved on this device”. Leave, reopen and verify title, lyrics and chords.
-5. Force-quit only after Saved, relaunch offline and verify again. Separately test backgrounding immediately after an edit. An OS force-kill inside the 800 ms debounce window can lose that unsaved edit; explicit Save is the checkpoint.
-6. Enter performance mode with the top-right play icon. Adjust text, manually scroll, auto-scroll, change speed, pause and return to top. Confirm screen-awake beyond the device's normal auto-lock interval.
-7. Rotate and test with large accessibility text, keyboard open, long lines, emoji and non-Latin lyrics. Check reachability and wrapping.
-8. Edit/save a song, open History and recover an older version. Both the current and recovered song must remain.
-9. Copy ChordPro and inspect it in a text editor. This initial exporter supports the entered bracket-chord/lyric subset; arbitrary directive roundtrips and full file interchange are still pending.
+## Sheet editing
 
-No microphone request should appear in this slice. Native screen-awake behavior, signing, keyboard feel and runtime integration must be verified on-device; widget tests cannot certify those.
+1. Open a song saved in 0.1. Verify all lyrics and chords survived; older chords become `{Chord}` markers at their original lyric anchors. Open History and recover an older version.
+2. Paste a complete multiline sheet, including `[Intro]`, aligned spaces, blank lines, `{Am}`, ordinary `C/G`, emoji and unfinished braces. Edit anywhere, select across lines, copy/paste and undo/redo.
+3. Save, leave, reopen, then relaunch in airplane mode. Confirm the full text is unchanged. Long lines should scroll sideways without rewriting spaces.
+4. Enter performance mode. Confirm the sheet is visible, `{Am}` has a rounded label and ordinary text stays plain. Check larger/smaller text, horizontal scrolling of wide lines, manual/automatic vertical scrolling and screen-awake.
+5. Test keyboard reachability, rotation and larger accessibility text.
+
+## Recording and playback
+
+1. Fresh permission state: opening the library must not request microphone access. Tap Record; deny permission and verify a clear explanation/retry path and no empty recording. Enable microphone access in Settings and retry.
+2. Capture 20–30 seconds of guitar. Verify the input meter reacts to actual sound. Pause/resume, stop, name and save. The app should show Recordings after saving from the main screen.
+3. Play, pause, seek, replay ten seconds and repeat the whole take. At the end, one tap on Play should restart it. Listen for correct speed and useful capture quality.
+4. Attach the take to an existing song. Verify it appears in that song's Recordings screen. Reattach it elsewhere and then detach it; it should remain one recording with unchanged audio.
+5. Start another recording and background/lock the phone. It should stop and remain as a draft. Return, save it, then relaunch offline and verify playback.
+6. Interrupt a capture with Siri/a phone call, then explicitly resume or stop. Test speaker, wired and Bluetooth routes; disconnect headphones during playback and capture. These native behaviors are not certified by mocked tests.
+7. Keep a draft for later, reopen it from the recovery card, and save. Separately discard a disposable draft after the confirmation prompt.
+8. Test a several-minute capture and low-storage/error behavior. A failed save must retain recoverable captured bytes; a force-killed M4A may be incomplete and should not be represented as a valid playable recording.
+
+Trim, A/B region loops, waveform display, external audio import and background capture are not part of this update. Whole-recording repeat is available. Do not uninstall the app as a recovery step: its library is currently device-local.

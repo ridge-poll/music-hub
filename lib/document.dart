@@ -1,66 +1,10 @@
 import 'dart:convert';
-
 import 'package:uuid/uuid.dart';
 
 const ids = Uuid();
 
-class Chord {
-  Chord(this.offset, this.name);
-  int offset;
-  String name;
-  Map<String, dynamic> toJson() => {'offset': offset, 'name': name};
-}
-
-class LyricLine {
-  LyricLine({String? id, this.lyric = '', List<Chord>? chords})
-    : id = id ?? ids.v4(),
-      chords = chords ?? [];
-  final String id;
-  String lyric;
-  final List<Chord> chords;
-
-  // Offsets use Dart/TextEditingValue UTF-16 units, not bytes or pixels.
-  // Preserve anchors around an edit; anchors in replaced text land at its start.
-  void edit(String next) {
-    var prefix = 0;
-    while (prefix < lyric.length &&
-        prefix < next.length &&
-        lyric.codeUnitAt(prefix) == next.codeUnitAt(prefix)) {
-      prefix++;
-    }
-    var suffix = 0;
-    while (suffix < lyric.length - prefix &&
-        suffix < next.length - prefix &&
-        lyric.codeUnitAt(lyric.length - suffix - 1) ==
-            next.codeUnitAt(next.length - suffix - 1)) {
-      suffix++;
-    }
-    final oldEnd = lyric.length - suffix;
-    for (final chord in chords) {
-      if (chord.offset >= oldEnd) {
-        chord.offset += next.length - lyric.length;
-      } else if (chord.offset > prefix) {
-        chord.offset = prefix;
-      }
-      chord.offset = chord.offset.clamp(0, next.length);
-    }
-    lyric = next;
-  }
-
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'lyric': lyric,
-    'chords': chords.map((c) => c.toJson()).toList(),
-  };
-  factory LyricLine.fromJson(Map<String, dynamic> json) => LyricLine(
-    id: json['id'] as String,
-    lyric: json['lyric'] as String,
-    chords: (json['chords'] as List)
-        .map((c) => Chord(c['offset'] as int, c['name'] as String))
-        .toList(),
-  );
-}
-
+// The user's text is the document. Whitespace, section labels and unfinished
+// chord markers are literal content; presentation never rewrites this string.
 class SongDocument {
   SongDocument({
     String? id,
@@ -69,31 +13,31 @@ class SongDocument {
     this.title = '',
     this.artist = '',
     this.revision = 0,
-    List<LyricLine>? lines,
+    this.text = '',
   }) : id = id ?? ids.v4(),
        arrangementId = arrangementId ?? ids.v4(),
-       sheetId = sheetId ?? ids.v4(),
-       lines = lines ?? [LyricLine()];
+       sheetId = sheetId ?? ids.v4();
   final String id;
   final String arrangementId;
   final String sheetId;
   String title;
   String artist;
+  String text;
   int revision;
-  final List<LyricLine> lines;
   Map<String, dynamic> toJson() => {
-    'formatVersion': 1,
+    'formatVersion': 2,
     'id': id,
     'arrangementId': arrangementId,
     'sheetId': sheetId,
     'title': title,
     'artist': artist,
-    'lines': lines.map((l) => l.toJson()).toList(),
+    'text': text,
   };
   String encode() => jsonEncode(toJson());
   factory SongDocument.decode(String content, int revision) {
     final json = jsonDecode(content) as Map<String, dynamic>;
-    if (json['formatVersion'] != 1) {
+    final version = json['formatVersion'];
+    if (version != 1 && version != 2) {
       throw const FormatException('Unsupported document version');
     }
     return SongDocument(
@@ -103,27 +47,41 @@ class SongDocument {
       title: json['title'],
       artist: json['artist'],
       revision: revision,
-      lines: (json['lines'] as List).map((l) => LyricLine.fromJson(l)).toList(),
+      text: version == 2
+          ? json['text'] as String
+          : _legacyText(json['lines'] as List),
     );
   }
 }
 
-// ChordPro is an interchange representation, never the stored source of truth.
-String exportChordPro(SongDocument song) {
-  final result = StringBuffer(
-    '{title: ${song.title}}\n{artist: ${song.artist}}\n',
-  );
-  for (final line in song.lines) {
-    final chords = [...line.chords]
-      ..sort((a, b) => a.offset.compareTo(b.offset));
-    var cursor = 0;
-    for (final chord in chords) {
-      final offset = chord.offset.clamp(cursor, line.lyric.length);
-      result.write(line.lyric.substring(cursor, offset));
-      result.write('[${chord.name}]');
-      cursor = offset;
-    }
-    result.writeln(line.lyric.substring(cursor));
-  }
-  return result.toString();
-}
+// Lazy, lossless content migration. Old history payloads are left untouched.
+// Inserting a marker at the old UTF-16 anchor preserves every original lyric
+// character and chord, including repeated chords at the same position.
+String _legacyText(List lines) => lines
+    .map((value) {
+      final line = value as Map<String, dynamic>;
+      final lyric = line['lyric'] as String;
+      final chords = (line['chords'] as List).asMap().entries.toList()
+        ..sort((a, b) {
+          final order = (a.value['offset'] as int).compareTo(
+            b.value['offset'] as int,
+          );
+          return order == 0 ? a.key.compareTo(b.key) : order;
+        });
+      final output = StringBuffer();
+      var cursor = 0;
+      for (final entry in chords) {
+        final chord = entry.value;
+        final offset = (chord['offset'] as int).clamp(cursor, lyric.length);
+        output.write(lyric.substring(cursor, offset));
+        output.write('{${chord['name']}}');
+        cursor = offset;
+      }
+      output.write(lyric.substring(cursor));
+      return output.toString();
+    })
+    .join('\n');
+
+// Only explicit chord-like braces are decorated. Ordinary prose in braces and
+// [Intro] / [Verse] remain literal text; no ChordPro directives are interpreted.
+final chordMarker = RegExp(r'\{([A-G](?:#|b|♯|♭)?[^{}\s\r\n]{0,23})\}');

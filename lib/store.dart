@@ -2,6 +2,7 @@ import 'package:path/path.dart' as path;
 import 'package:sqflite_common/sqlite_api.dart';
 
 import 'document.dart';
+import 'recording.dart';
 
 class SavedVersion {
   SavedVersion(this.revision, this.content, this.conflict);
@@ -23,7 +24,17 @@ class MusicStore {
     final db = await f.openDatabase(
       p,
       options: OpenDatabaseOptions(
-        version: 1,
+        version: 2,
+        onUpgrade: (db, old, next) async {
+          if (old < 2) {
+            await db.execute(
+              "ALTER TABLE recordings ADD COLUMN duration_ms INTEGER NOT NULL DEFAULT 0",
+            );
+            await db.execute(
+              "ALTER TABLE recordings ADD COLUMN created_at TEXT NOT NULL DEFAULT ''",
+            );
+          }
+        },
         onConfigure: (db) async {
           await db.execute('PRAGMA foreign_keys = ON');
         },
@@ -66,7 +77,7 @@ class MusicStore {
             'CREATE TABLE audio_assets ($stamp, sha256 TEXT NOT NULL, relative_path TEXT NOT NULL, source_asset_id TEXT REFERENCES audio_assets(id), derivation_type TEXT, parameters TEXT)',
           );
           await db.execute(
-            'CREATE TABLE recordings ($stamp, asset_id TEXT NOT NULL REFERENCES audio_assets(id), title TEXT NOT NULL)',
+            'CREATE TABLE recordings ($stamp, asset_id TEXT NOT NULL REFERENCES audio_assets(id), title TEXT NOT NULL, duration_ms INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT \'\')',
           );
           await db.execute(
             'CREATE TABLE song_recordings ($stamp, song_id TEXT NOT NULL REFERENCES songs(id), recording_id TEXT NOT NULL REFERENCES recordings(id))',
@@ -219,6 +230,104 @@ class MusicStore {
             ),
           )
           .toList();
+
+  Future<List<RecordingEntry>> recordings({String? songId}) async {
+    final rows = await db.rawQuery(
+      '''SELECT r.id, r.title, r.duration_ms, r.created_at,
+      a.relative_path, s.id AS song_id, s.title AS song_title
+      FROM recordings r JOIN audio_assets a ON a.id = r.asset_id
+      LEFT JOIN song_recordings link ON link.recording_id = r.id AND link.deleted = 0
+      LEFT JOIN songs s ON s.id = link.song_id AND s.deleted = 0
+      WHERE r.deleted = 0 AND a.deleted = 0
+      ${songId == null ? '' : 'AND s.id = ?'} ORDER BY r.revision DESC''',
+      songId == null ? [] : [songId],
+    );
+    return rows
+        .map(
+          (r) => RecordingEntry(
+            id: r['id'] as String,
+            title: r['title'] as String,
+            relativePath: r['relative_path'] as String,
+            durationMs: r['duration_ms'] as int,
+            createdAt: r['created_at'] as String,
+            songId: r['song_id'] as String?,
+            songTitle: r['song_title'] as String?,
+          ),
+        )
+        .toList();
+  }
+
+  Future<void> saveRecording({
+    required String id,
+    required String title,
+    required String hash,
+    required String relativePath,
+    required int durationMs,
+    required String createdAt,
+    String? songId,
+  }) async {
+    await db.transaction((tx) async {
+      // A retry after a crash between database commit and draft cleanup is safe.
+      if ((await tx.query(
+        'recordings',
+        where: 'id = ?',
+        whereArgs: [id],
+      )).isNotEmpty) {
+        return;
+      }
+      final stamp = await _stamp(tx);
+      final assets = await tx.query(
+        'audio_assets',
+        where: 'sha256 = ? AND deleted = 0',
+        whereArgs: [hash],
+      );
+      final assetId = assets.isEmpty ? ids.v4() : assets.first['id'] as String;
+      if (assets.isEmpty) {
+        await tx.insert('audio_assets', {
+          'id': assetId,
+          ...stamp,
+          'sha256': hash,
+          'relative_path': relativePath,
+        });
+      }
+      await tx.insert('recordings', {
+        'id': id,
+        ...stamp,
+        'asset_id': assetId,
+        'title': title,
+        'duration_ms': durationMs,
+        'created_at': createdAt,
+      });
+      if (songId != null) {
+        await tx.insert('song_recordings', {
+          'id': ids.v4(),
+          ...stamp,
+          'song_id': songId,
+          'recording_id': id,
+        });
+      }
+    });
+  }
+
+  Future<void> attachRecording(String recordingId, String? songId) async {
+    await db.transaction((tx) async {
+      final stamp = await _stamp(tx);
+      await tx.update(
+        'song_recordings',
+        {...stamp, 'deleted': 1},
+        where: 'recording_id = ? AND deleted = 0',
+        whereArgs: [recordingId],
+      );
+      if (songId != null) {
+        await tx.insert('song_recordings', {
+          'id': ids.v4(),
+          ...stamp,
+          'song_id': songId,
+          'recording_id': recordingId,
+        });
+      }
+    });
+  }
 
   Future<void> close() => db.close();
 }

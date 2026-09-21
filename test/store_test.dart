@@ -28,9 +28,7 @@ void main() {
     () async {
       final song = SongDocument(
         title: 'Porch light',
-        lines: [
-          LyricLine(lyric: 'Take the long way', chords: [Chord(0, 'D')]),
-        ],
+        text: '{D}Take the long way',
       );
       expect(await store.save(song), true);
       final firstRevision = song.revision;
@@ -41,7 +39,7 @@ void main() {
       );
       final reopened = (await store.list()).single;
       expect(reopened.encode(), song.encode());
-      reopened.lines.first.edit('Take the long way home');
+      reopened.text += ' home';
       expect(await store.save(reopened), true);
       expect(reopened.revision, greaterThan(firstRevision));
       expect((await store.db.query('arrangements')).length, 1);

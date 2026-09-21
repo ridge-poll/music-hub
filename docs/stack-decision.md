@@ -29,7 +29,7 @@ All persisted entity rows have UUID, owner, logical revision, device ID and tomb
 
 Atomic transactions create Song, hidden default Arrangement, join row, ChordSheet and history. Current content and version history cannot diverge from a partial save. A stale base revision preserves the attempted edit in History and leaves the current document intact. Recovery creates a separate song. No delete UI yet; future deletion must write ordered tombstones, never hard-delete synced rows.
 
-Chord sheet data is versioned native JSON, containing lyric lines and UTF-16 chord anchors aligned to Flutter's text cursor. ChordPro is an export representation. No universal musical-event abstraction. Tab storage is reserved only: before implementation, define its independent ordered position structure, with optional duration, based on the prototype results. Sections are range annotations, not content containers. Candidates and analysis runs are separate unused tables and cannot enter the authored UI automatically.
+Chord sheet data is versioned native JSON. Version 0.2 replaces lyric lines/anchors with one exact plain-text string at the user’s request. Format-1 content is converted on read; history payloads are not rewritten. Optional `{Chord}` markers affect presentation only; this is not a ChordPro parser. No universal musical-event abstraction. Tab storage is reserved only: before implementation, define its independent ordered position structure, with optional duration, based on the prototype results. Sections are range annotations, not content containers. Candidates and analysis runs are separate unused tables and cannot enter the authored UI automatically.
 
 ## Sources
 
@@ -39,3 +39,9 @@ Chord sheet data is versioned native JSON, containing lyric lines and UTF-16 cho
 - [Flutter isolates](https://docs.flutter.dev/perf/isolates)
 - [Expo development builds and native modules](https://docs.expo.dev/workflow/overview/)
 - [Flutter iOS setup](https://docs.flutter.dev/platform-integration/ios/setup)
+
+## Slice 2 implementation update — 20 September 2026
+
+Use `record` 7.1.1 for native capture, `just_audio` 0.10.6 for local playback, and `audio_session` for playback session configuration. Capture supports future raw-PCM access through the recorder API, but this release uses AAC files and native amplitude readings only. No FFT, waveform synthesis or ML has been added. See [record's platform matrix and streaming API](https://pub.dev/packages/record), [just_audio's local playback API](https://pub.dev/packages/just_audio) and [audio_session](https://pub.dev/packages/audio_session). Physical audio quality, latency and route handling remain an iPhone acceptance gate.
+
+Database version 2 adds recording duration and display-only creation time. Revision ordering still uses the logical counter. Audio drafts live under Documents/audio/drafts; verified, immutable assets live under Documents/audio/objects/<sha256>.m4a. The database stores relative paths, so an app-container path change does not break links. A database failure leaves the draft and its bytes intact. After a successful commit, cleanup is best-effort and retries use the stable recording UUID. Existing identical blobs are verified before use.

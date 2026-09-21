@@ -4,17 +4,20 @@
 
 - Direct library opening; create without organizing first.
 - Hidden default arrangement, clean authored native chord sheet, SQLite transactions.
-- Visual lyric-line editing, cursor-anchored chord entry/edit/removal.
+- One continuous plain-text editor, native selection/copy/paste and undo/redo (updated per user feedback).
+- Optional `{Chord}` styling; spaces and section labels remain literal text. Legacy songs and history stay readable.
 - Debounced autosave, explicit Save and save-before-navigation, visible failure state.
 - Recover saved versions as separate songs.
 - Performance screen in one tap; font size, manual scrolling, auto-scroll speed, keep-awake.
-- Convenience ChordPro clipboard export; full file import/export is not finished.
+- Native plain text replaces the limited ChordPro copy action; full format/file interchange remains deferred.
 
-Remaining V1 chord work: full ChordPro parsing/file interchange with loss reporting, transpose, capo UI, section annotations, richer undo/redo, Unicode/IME and long-line interaction polish. Tags/folders, standalone notes, tuner, metronome and other V1 features remain future slices. The first slice is not all of V1.
+Remaining V1 chord work: file interchange with loss reporting, transpose and capo if useful, and real-device Unicode/IME/large-text polish. Keep the requested plain-text interaction simple; do not reintroduce structured line editing. Tags/folders, standalone notes, tuner, metronome and other V1 features remain future slices. The first slice is not all of V1.
 
 ## Slice 2: record → save → playback
 
-Validate the audio stack on iPhone early, then Android. Recording must be accessible directly from app opening without selecting a song. Save immutable content-addressed files; linking to a song is a separate row. Implement interruption handling and robust file finalization before adding trim. Include A/B looping in this slice or the immediate follow-up. No source separation or ML.
+Implemented in 0.2: one-tap recording from the library, input metering, pause/resume/stop, durable drafts, immutable content-addressed audio, local playback/seek/repeat, and separate song attachment rows. Native interruption policy is pause/manual resume; backgrounding finalizes to a draft. Validate these behaviors on the iPhone before expanding.
+
+Next: native audio acceptance, A/B region loops, then derived-asset trim and useful waveform rendering. No source separation or ML.
 
 ## Tab interaction gate
 

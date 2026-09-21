@@ -1,12 +1,15 @@
 import 'dart:async';
+import 'package:path_provider/path_provider.dart';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:sqflite/sqflite.dart' show databaseFactory;
 
 import 'document.dart';
 import 'store.dart';
+import 'audio_files.dart';
+import 'audio_screen.dart';
+import 'sheet_view.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,13 +23,19 @@ class Bootstrap extends StatefulWidget {
 }
 
 class _BootstrapState extends State<Bootstrap> {
-  late Future<MusicStore> opening = MusicStore.open(factory: databaseFactory);
+  Future<(MusicStore, AudioFiles)> open() async {
+    final files = AudioFiles(await getApplicationDocumentsDirectory());
+    final store = await MusicStore.open(factory: databaseFactory);
+    return (store, files);
+  }
+
+  late Future<(MusicStore, AudioFiles)> opening = open();
   @override
-  Widget build(BuildContext context) => FutureBuilder<MusicStore>(
+  Widget build(BuildContext context) => FutureBuilder<(MusicStore, AudioFiles)>(
     future: opening,
     builder: (context, snapshot) {
       if (snapshot.hasData) {
-        return MusicHub(store: snapshot.data!);
+        return MusicHub(store: snapshot.data!.$1, files: snapshot.data!.$2);
       }
       return MaterialApp(
         home: Scaffold(
@@ -40,7 +49,7 @@ class _BootstrapState extends State<Bootstrap> {
                       ),
                       TextButton(
                         onPressed: () => setState(() {
-                          opening = MusicStore.open(factory: databaseFactory);
+                          opening = open();
                         }),
                         child: const Text('Retry'),
                       ),
@@ -55,8 +64,9 @@ class _BootstrapState extends State<Bootstrap> {
 }
 
 class MusicHub extends StatelessWidget {
-  const MusicHub({super.key, required this.store});
+  const MusicHub({super.key, required this.store, required this.files});
   final MusicStore store;
+  final AudioFiles files;
   @override
   Widget build(BuildContext context) => MaterialApp(
     title: 'Music Hub',
@@ -76,13 +86,14 @@ class MusicHub extends StatelessWidget {
         border: OutlineInputBorder(),
       ),
     ),
-    home: LibraryScreen(store: store),
+    home: LibraryScreen(store: store, files: files),
   );
 }
 
 class LibraryScreen extends StatefulWidget {
-  const LibraryScreen({super.key, required this.store});
+  const LibraryScreen({super.key, required this.store, required this.files});
   final MusicStore store;
+  final AudioFiles files;
   @override
   State<LibraryScreen> createState() => _LibraryScreenState();
 }
@@ -90,120 +101,254 @@ class LibraryScreen extends StatefulWidget {
 class _LibraryScreenState extends State<LibraryScreen> {
   late Future<List<SongDocument>> songs = widget.store.list();
   String query = '';
-  Future<void> open(SongDocument song) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => EditorScreen(store: widget.store, song: song),
-      ),
-    );
+  int page = 0;
+  int recordingsGeneration = 0;
+  void refresh() {
     if (mounted) {
       setState(() {
         songs = widget.store.list();
+        recordingsGeneration++;
       });
     }
   }
 
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Music Hub')),
-    floatingActionButton: FloatingActionButton.extended(
-      onPressed: () => open(SongDocument()),
-      icon: const Icon(Icons.add),
-      label: const Text('New song'),
-    ),
-    body: SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 88),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Your songs',
-              style: Theme.of(context).textTheme.headlineLarge,
-            ),
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 12),
-              child: Text(
-                'A place to write. A space to play.\nSaved on this device · works offline',
-              ),
-            ),
-            TextField(
-              decoration: const InputDecoration(
-                hintText: 'Search title or artist',
-                prefixIcon: Icon(Icons.search),
-              ),
-              onChanged: (value) => setState(() {
-                query = value.toLowerCase();
-              }),
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: FutureBuilder<List<SongDocument>>(
-                future: songs,
-                builder: (context, snapshot) {
-                  if (snapshot.hasError) {
-                    return Center(
-                      child: TextButton(
-                        onPressed: () => setState(() {
-                          songs = widget.store.list();
-                        }),
-                        child: const Text('Could not load songs. Retry'),
-                      ),
-                    );
-                  }
-                  if (!snapshot.hasData) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  final items = snapshot.data!
-                      .where(
-                        (s) => '${s.title} ${s.artist}'.toLowerCase().contains(
-                          query,
-                        ),
-                      )
-                      .toList();
-                  if (items.isEmpty) {
-                    return Center(
-                      child: Text(
-                        query.isEmpty
-                            ? 'Start with a few words and a chord.\nTap New song to begin.'
-                            : 'No matching songs.',
-                        textAlign: TextAlign.center,
-                      ),
-                    );
-                  }
-                  return ListView.separated(
-                    itemCount: items.length,
-                    separatorBuilder: (_, index) => const Divider(),
-                    itemBuilder: (context, index) {
-                      final song = items[index];
-                      return ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: const CircleAvatar(
-                          child: Icon(Icons.music_note_outlined),
-                        ),
-                        title: Text(
-                          song.title.isEmpty ? 'Untitled song' : song.title,
-                        ),
-                        subtitle: Text(
-                          song.artist.isEmpty ? 'Chords & lyrics' : song.artist,
-                        ),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () => open(song),
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
+  Future<void> open(SongDocument song) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) =>
+            EditorScreen(store: widget.store, song: song, files: widget.files),
+      ),
+    );
+    refresh();
+  }
+
+  Future<void> record() async {
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        builder: (_) => RecorderScreen(
+          store: widget.store,
+          files: widget.files,
+          startImmediately: true,
         ),
       ),
+    );
+    if (saved == true && mounted) {
+      setState(() {
+        page = 1;
+      });
+    }
+    refresh();
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(
+      title: const Text(
+        'Music Hub',
+        style: TextStyle(fontWeight: FontWeight.w700),
+      ),
+      actions: [
+        TextButton.icon(
+          onPressed: () => open(SongDocument()),
+          icon: const Icon(Icons.add),
+          label: const Text('New song'),
+        ),
+        const SizedBox(width: 8),
+      ],
+    ),
+    floatingActionButton: FloatingActionButton.extended(
+      elevation: 0,
+      onPressed: record,
+      backgroundColor: const Color(0xFF276752),
+      foregroundColor: Colors.white,
+      icon: const Icon(Icons.mic_none_rounded),
+      label: const Text('Record'),
+    ),
+    bottomNavigationBar: NavigationBar(
+      selectedIndex: page,
+      onDestinationSelected: (index) {
+        setState(() {
+          page = index;
+        });
+        refresh();
+      },
+      destinations: const [
+        NavigationDestination(
+          icon: Icon(Icons.library_music_outlined),
+          selectedIcon: Icon(Icons.library_music),
+          label: 'Songs',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.graphic_eq),
+          label: 'Recordings',
+        ),
+      ],
+    ),
+    body: SafeArea(
+      child: page == 1
+          ? RecordingsPane(
+              key: ValueKey(recordingsGeneration),
+              store: widget.store,
+              files: widget.files,
+            )
+          : Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 88),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'YOUR MUSIC, WITHIN REACH',
+                    style: TextStyle(
+                      fontSize: 10,
+                      letterSpacing: 2,
+                      color: Color(0xFF597064),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Pick up where you left off.',
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  TextField(
+                    decoration: InputDecoration(
+                      hintText: 'Find a song or artist',
+                      prefixIcon: const Icon(Icons.search),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                    onChanged: (value) => setState(() {
+                      query = value.toLowerCase();
+                    }),
+                  ),
+                  const SizedBox(height: 20),
+                  Expanded(
+                    child: FutureBuilder<List<SongDocument>>(
+                      future: songs,
+                      builder: (context, snapshot) {
+                        if (snapshot.hasError) {
+                          return Center(
+                            child: TextButton(
+                              onPressed: refresh,
+                              child: const Text('Could not load songs. Retry'),
+                            ),
+                          );
+                        }
+                        if (!snapshot.hasData) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        }
+                        final items = snapshot.data!
+                            .where(
+                              (song) => '${song.title} ${song.artist}'
+                                  .toLowerCase()
+                                  .contains(query),
+                            )
+                            .toList();
+                        if (items.isEmpty) {
+                          return Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.notes_rounded,
+                                  size: 48,
+                                  color: Color(0xFF597064),
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  query.isEmpty
+                                      ? 'Every song starts somewhere.'
+                                      : 'No matching songs.',
+                                  style: Theme.of(context).textTheme.titleLarge,
+                                ),
+                                const SizedBox(height: 8),
+                                if (query.isEmpty)
+                                  const Text(
+                                    'Paste your lyrics, or record a little idea.',
+                                    textAlign: TextAlign.center,
+                                  ),
+                              ],
+                            ),
+                          );
+                        }
+                        return ListView.separated(
+                          itemCount: items.length,
+                          separatorBuilder: (_, index) =>
+                              const SizedBox(height: 10),
+                          itemBuilder: (context, index) {
+                            final song = items[index];
+                            return Card(
+                              elevation: 0,
+                              color: Colors.white,
+                              margin: EdgeInsets.zero,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                              child: ListTile(
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 18,
+                                  vertical: 10,
+                                ),
+                                leading: Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFEAF0E6),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(Icons.music_note_outlined),
+                                ),
+                                title: Text(
+                                  song.title.isEmpty
+                                      ? 'Untitled song'
+                                      : song.title,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                subtitle: Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: Text(
+                                    song.artist.isNotEmpty
+                                        ? song.artist
+                                        : (song.text.trim().isEmpty
+                                              ? 'Ready for an idea'
+                                              : song.text.split('\n').first),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                trailing: const Icon(Icons.chevron_right),
+                                onTap: () => open(song),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
     ),
   );
 }
 
 class EditorScreen extends StatefulWidget {
-  const EditorScreen({super.key, required this.store, required this.song});
+  const EditorScreen({
+    super.key,
+    required this.store,
+    required this.song,
+    required this.files,
+  });
+  final AudioFiles files;
   final MusicStore store;
   final SongDocument song;
   @override
@@ -219,6 +364,8 @@ class _EditorScreenState extends State<EditorScreen>
   late final TextEditingController artist = TextEditingController(
     text: song.artist,
   );
+  late final SheetController sheet = SheetController(text: song.text);
+  final UndoHistoryController undo = UndoHistoryController();
   Timer? debounce;
   Future<bool>? pendingSave;
   bool dirty = false;
@@ -271,6 +418,7 @@ class _EditorScreenState extends State<EditorScreen>
     final generation = editGeneration;
     song.title = title.text.trim();
     song.artist = artist.text.trim();
+    song.text = sheet.text;
     final snapshot = SongDocument.decode(song.encode(), song.revision);
     final operation = _persist(snapshot, generation);
     pendingSave = operation;
@@ -398,14 +546,7 @@ class _EditorScreenState extends State<EditorScreen>
     final copy = SongDocument(
       title: '${old.title} (recovered)',
       artist: old.artist,
-      lines: old.lines
-          .map(
-            (l) => LyricLine(
-              lyric: l.lyric,
-              chords: l.chords.map((c) => Chord(c.offset, c.name)).toList(),
-            ),
-          )
-          .toList(),
+      text: old.text,
     );
     try {
       await widget.store.save(copy);
@@ -431,9 +572,53 @@ class _EditorScreenState extends State<EditorScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     debounce?.cancel();
+    sheet.dispose();
+    undo.dispose();
     title.dispose();
     artist.dispose();
     super.dispose();
+  }
+
+  Future<void> recordForSong() async {
+    FocusScope.of(context).unfocus();
+    if (!await save() || !mounted) {
+      return;
+    }
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => SongRecordingsScreen(
+          store: widget.store,
+          files: widget.files,
+          song: song,
+        ),
+      ),
+    );
+  }
+
+  Future<void> reload() async {
+    try {
+      final latest = (await widget.store.list()).firstWhere(
+        (s) => s.id == song.id,
+      );
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        song = latest;
+        title.text = latest.title;
+        artist.text = latest.artist;
+        sheet.text = latest.text;
+        dirty = false;
+        conflicted = false;
+        status = 'Saved on this device';
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          status = 'Could not reopen. Please retry.';
+        });
+      }
+    }
   }
 
   @override
@@ -470,372 +655,126 @@ class _EditorScreenState extends State<EditorScreen>
         ],
       ),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(20),
+        child: Column(
           children: [
-            TextField(
-              key: const Key('title'),
-              controller: title,
-              decoration: const InputDecoration(labelText: 'Song title'),
-              onChanged: (_) => changed(),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: artist,
-              decoration: const InputDecoration(labelText: 'Artist (optional)'),
-              onChanged: (_) => changed(),
-            ),
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Semantics(
-                liveRegion: true,
-                child: Text(
-                  status,
-                  key: const Key('save-status'),
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ),
-            ),
-            if (conflicted)
-              TextButton(
-                onPressed: () async {
-                  try {
-                    final latest = (await widget.store.list()).firstWhere(
-                      (s) => s.id == song.id,
-                    );
-                    if (!mounted) {
-                      return;
-                    }
-                    setState(() {
-                      song = latest;
-                      title.text = latest.title;
-                      artist.text = latest.artist;
-                      dirty = false;
-                      conflicted = false;
-                      status = 'Saved on this device';
-                    });
-                  } catch (_) {
-                    if (mounted) {
-                      setState(() {
-                        status =
-                            'Could not reopen. Retry or recover from History.';
-                      });
-                    }
-                  }
-                },
-                child: const Text('Reopen saved song'),
-              ),
-            Text(
-              'Chords & lyrics',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8),
-              child: Text(
-                'Type a lyric line. Place the cursor, then tap + Chord. Tap a chord to edit it.',
-              ),
-            ),
-            for (var i = 0; i < song.lines.length; i++)
-              LyricLineEditor(
-                key: ValueKey(song.lines[i].id),
-                line: song.lines[i],
-                number: i + 1,
-                onChanged: changed,
-                onDelete: () async {
-                  final index = i;
-                  final remove = await showDialog<bool>(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('Remove this line?'),
-                      content: const Text(
-                        'The line and its chords will be removed. Saved versions remain in History.',
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, false),
-                          child: const Text('Keep'),
-                        ),
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, true),
-                          child: const Text('Remove'),
-                        ),
-                      ],
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Column(
+                children: [
+                  TextField(
+                    key: const Key('title'),
+                    controller: title,
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
                     ),
-                  );
-                  if (remove == true && mounted) {
-                    setState(() {
-                      song.lines.removeAt(index);
-                      if (song.lines.isEmpty) {
-                        song.lines.add(LyricLine());
-                      }
-                    });
-                    changed();
-                  }
-                },
-              ),
-            OutlinedButton.icon(
-              onPressed: () {
-                setState(() {
-                  song.lines.add(LyricLine());
-                });
-                changed();
-              },
-              icon: const Icon(Icons.add),
-              label: const Text('Add lyric line'),
-            ),
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: perform,
-              icon: const Icon(Icons.play_arrow),
-              label: const Text('Performance mode'),
-            ),
-            TextButton.icon(
-              onPressed: () async {
-                if (!await save()) {
-                  return;
-                }
-                await Clipboard.setData(
-                  ClipboardData(text: exportChordPro(song)),
-                );
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('ChordPro copied to clipboard.'),
+                    decoration: const InputDecoration(
+                      hintText: 'Untitled song',
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.zero,
                     ),
-                  );
-                }
-              },
-              icon: const Icon(Icons.copy),
-              label: const Text('Copy as ChordPro'),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-}
-
-class LyricLineEditor extends StatefulWidget {
-  const LyricLineEditor({
-    super.key,
-    required this.line,
-    required this.number,
-    required this.onChanged,
-    required this.onDelete,
-  });
-  final LyricLine line;
-  final int number;
-  final VoidCallback onChanged;
-  final VoidCallback onDelete;
-  @override
-  State<LyricLineEditor> createState() => _LyricLineEditorState();
-}
-
-class _LyricLineEditorState extends State<LyricLineEditor> {
-  late final TextEditingController controller = TextEditingController(
-    text: widget.line.lyric,
-  );
-  @override
-  void didUpdateWidget(covariant LyricLineEditor oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.line != widget.line) {
-      controller.text = widget.line.lyric;
-    }
-  }
-
-  Future<void> chord([Chord? existing]) async {
-    final offset =
-        existing?.offset ??
-        (controller.selection.isValid
-            ? controller.selection.baseOffset
-            : controller.text.length);
-    final input = TextEditingController(text: existing?.name ?? '');
-    final value = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(existing == null ? 'Add chord at cursor' : 'Edit chord'),
-        content: TextField(
-          controller: input,
-          autofocus: true,
-          maxLength: 24,
-          inputFormatters: [
-            FilteringTextInputFormatter.deny(RegExp(r'[\[\]{}\n\r]')),
-          ],
-          decoration: const InputDecoration(hintText: 'Am, C/G, F♯m7…'),
-          onSubmitted: (value) => Navigator.pop(context, value),
-        ),
-        actions: [
-          if (existing != null)
-            TextButton(
-              onPressed: () => Navigator.pop(context, ''),
-              child: const Text('Remove'),
-            ),
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, input.text),
-            child: const Text('Done'),
-          ),
-        ],
-      ),
-    );
-    // Dialog route disposes its text field after the closing animation.
-    Future<void>.delayed(const Duration(seconds: 1), input.dispose);
-    if (value == null || !mounted) {
-      return;
-    }
-    setState(() {
-      if (existing != null) {
-        widget.line.chords.remove(existing);
-      }
-      if (value.trim().isNotEmpty) {
-        widget.line.chords.add(
-          Chord(offset.clamp(0, widget.line.lyric.length), value.trim()),
-        );
-      }
-    });
-    widget.onChanged();
-  }
-
-  @override
-  void dispose() {
-    controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => Card(
-    margin: const EdgeInsets.symmetric(vertical: 8),
-    child: Padding(
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(
-                'LINE ${widget.number}',
-                style: Theme.of(context).textTheme.labelSmall,
-              ),
-              const Spacer(),
-              TextButton.icon(
-                onPressed: chord,
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('Chord'),
-              ),
-              IconButton(
-                tooltip: 'Remove line ${widget.number}',
-                onPressed: widget.onDelete,
-                icon: const Icon(Icons.delete_outline, size: 20),
-              ),
-            ],
-          ),
-          if (widget.line.chords.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: ChordLineView(line: widget.line, size: 17, onChord: chord),
-            ),
-          TextField(
-            key: ValueKey('lyric-${widget.number}'),
-            controller: controller,
-            minLines: 1,
-            maxLines: null,
-            decoration: const InputDecoration(
-              hintText: 'Write a lyric…',
-              isDense: true,
-            ),
-            onChanged: (text) {
-              setState(() {
-                widget.line.edit(text);
-              });
-              widget.onChanged();
-            },
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
-// Render lyric fragments and their chord labels in the same wrap cell so
-// labels remain anchored as font size and available width change.
-class ChordLineView extends StatelessWidget {
-  const ChordLineView({
-    super.key,
-    required this.line,
-    this.size = 24,
-    this.onChord,
-  });
-  final LyricLine line;
-  final double size;
-  final void Function(Chord)? onChord;
-  @override
-  Widget build(BuildContext context) {
-    final boundaries = <int>{
-      0,
-      line.lyric.length,
-      ...line.chords.map((c) => c.offset),
-    };
-    for (final match in RegExp(r'\s+').allMatches(line.lyric)) {
-      boundaries.add(match.end);
-    }
-    final positions = boundaries.toList()..sort();
-    if (line.lyric.isEmpty && line.chords.isEmpty) {
-      return SizedBox(height: size);
-    }
-    return Wrap(
-      crossAxisAlignment: WrapCrossAlignment.start,
-      runSpacing: 8,
-      children: [
-        for (var i = 0; i < positions.length; i++)
-          if (i < positions.length - 1 ||
-              line.chords.any((c) => c.offset == positions[i]))
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  height: size * 1.8,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+                    onChanged: (_) => changed(),
+                  ),
+                  TextField(
+                    controller: artist,
+                    decoration: const InputDecoration(
+                      hintText: 'Artist (optional)',
+                      border: InputBorder.none,
+                      isDense: true,
+                    ),
+                    onChanged: (_) => changed(),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
                     children: [
-                      for (final c in line.chords.where(
-                        (c) => c.offset == positions[i],
-                      ))
-                        Semantics(
-                          button: onChord != null,
-                          label: 'Chord ${c.name}',
-                          child: InkWell(
-                            onTap: onChord == null ? null : () => onChord!(c),
-                            child: Padding(
-                              padding: const EdgeInsets.only(right: 6),
-                              child: Text(
-                                c.name,
-                                style: TextStyle(
-                                  fontSize: size * 0.8,
-                                  fontWeight: FontWeight.bold,
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
-                              ),
-                            ),
+                      const Icon(
+                        Icons.cloud_off_outlined,
+                        size: 13,
+                        color: Color(0xFF597064),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Semantics(
+                          liveRegion: true,
+                          child: Text(
+                            status,
+                            key: const Key('save-status'),
+                            style: Theme.of(context).textTheme.labelSmall,
                           ),
                         ),
+                      ),
+                      ValueListenableBuilder<UndoHistoryValue>(
+                        valueListenable: undo,
+                        builder: (context, value, _) => Row(
+                          children: [
+                            IconButton(
+                              tooltip: 'Undo',
+                              onPressed: value.canUndo ? undo.undo : null,
+                              icon: const Icon(Icons.undo, size: 20),
+                            ),
+                            IconButton(
+                              tooltip: 'Redo',
+                              onPressed: value.canRedo ? undo.redo : null,
+                              icon: const Icon(Icons.redo, size: 20),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
-                ),
-                Text(
-                  i + 1 < positions.length
-                      ? line.lyric.substring(positions[i], positions[i + 1])
-                      : '',
-                  style: TextStyle(fontSize: size, height: 1.35),
-                ),
-              ],
+                  if (conflicted)
+                    TextButton(
+                      onPressed: reload,
+                      child: const Text('Reopen saved song'),
+                    ),
+                ],
+              ),
             ),
-      ],
-    );
-  }
+            const Divider(height: 1),
+            Expanded(
+              child: ColoredBox(
+                color: Colors.white,
+                child: PlainSheetEditor(
+                  controller: sheet,
+                  undoController: undo,
+                  onChanged: (_) => changed(),
+                ),
+              ),
+            ),
+            if (MediaQuery.viewInsetsOf(context).bottom > 0)
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => FocusScope.of(context).unfocus(),
+                  child: const Text('Done'),
+                ),
+              )
+            else
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                child: Row(
+                  children: [
+                    TextButton.icon(
+                      onPressed: recordForSong,
+                      icon: const Icon(Icons.graphic_eq),
+                      label: const Text('Recordings'),
+                    ),
+                    const Spacer(),
+                    FilledButton.icon(
+                      onPressed: perform,
+                      icon: const Icon(Icons.play_arrow),
+                      label: const Text('Play'),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class PerformanceScreen extends StatefulWidget {
@@ -970,41 +909,41 @@ class _PerformanceScreenState extends State<PerformanceScreen>
             const Text(
               'Could not keep the screen awake. Check your auto-lock setting.',
             ),
-          for (final line in widget.song.lines)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 20),
-              child: ChordLineView(line: line, size: size),
-            ),
+          PerformanceSheet(text: widget.song.text, size: size),
         ],
       ),
     ),
-    bottomNavigationBar: SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Row(
-          children: [
-            IconButton(
-              tooltip: 'Back to top',
-              onPressed: () => scroll.jumpTo(0),
-              icon: const Icon(Icons.vertical_align_top),
-            ),
-            FilledButton.tonalIcon(
-              onPressed: toggle,
-              icon: Icon(playing ? Icons.pause : Icons.play_arrow),
-              label: Text(playing ? 'Pause' : 'Scroll'),
-            ),
-            Expanded(
-              child: Slider(
-                label: '${speed.round()} px/s',
-                min: 8,
-                max: 60,
-                value: speed,
-                onChanged: (value) => setState(() {
-                  speed = value;
-                }),
+    bottomNavigationBar: SizedBox(
+      height: 80 + MediaQuery.paddingOf(context).bottom,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              IconButton(
+                tooltip: 'Back to top',
+                onPressed: () => scroll.jumpTo(0),
+                icon: const Icon(Icons.vertical_align_top),
               ),
-            ),
-          ],
+              FilledButton.tonalIcon(
+                onPressed: toggle,
+                icon: Icon(playing ? Icons.pause : Icons.play_arrow),
+                label: Text(playing ? 'Pause' : 'Scroll'),
+              ),
+              Expanded(
+                child: Slider(
+                  label: '${speed.round()} px/s',
+                  min: 8,
+                  max: 60,
+                  value: speed,
+                  onChanged: (value) => setState(() {
+                    speed = value;
+                  }),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     ),
