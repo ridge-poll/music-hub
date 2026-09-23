@@ -64,8 +64,13 @@ class PlainSheetEditor extends StatelessWidget {
     required this.controller,
     required this.onChanged,
     required this.undoController,
+    this.fieldKey = const Key('sheet-text'),
+    this.hintText =
+        '[Intro]\nC       Em      Am\nPaste or write your lyrics here…\n\nUse {Am} to highlight a chord.',
   });
-  final SheetController controller;
+  final TextEditingController controller;
+  final Key fieldKey;
+  final String hintText;
   final ValueChanged<String> onChanged;
   final UndoHistoryController undoController;
   @override
@@ -77,47 +82,47 @@ class PlainSheetEditor extends StatelessWidget {
       height: 1.65,
     );
     return LayoutBuilder(
-      builder: (context, constraints) => ValueListenableBuilder<TextEditingValue>(
-        valueListenable: controller,
-        builder: (context, value, _) => Scrollbar(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: SizedBox(
-              width: math.max(
-                constraints.maxWidth,
-                sheetWidth(context, value.text, style) + 48,
-              ),
-              height: constraints.maxHeight,
-              child: TextField(
-                key: const Key('sheet-text'),
-                controller: controller,
-                undoController: undoController,
-                expands: true,
-                maxLines: null,
-                minLines: null,
-                textAlignVertical: TextAlignVertical.top,
-                textDirection: TextDirection.ltr,
-                keyboardType: TextInputType.multiline,
-                style: style,
-                autocorrect: false,
-                enableSuggestions: false,
-                smartDashesType: SmartDashesType.disabled,
-                smartQuotesType: SmartQuotesType.disabled,
-                decoration: const InputDecoration(
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  filled: false,
-                  contentPadding: EdgeInsets.all(20),
-                  hintText:
-                      '[Intro]\nC       Em      Am\nPaste or write your lyrics here…\n\nUse {Am} to highlight a chord.',
+      builder: (context, constraints) =>
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: controller,
+            builder: (context, value, _) => Scrollbar(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  width: math.max(
+                    constraints.maxWidth,
+                    sheetWidth(context, value.text, style) + 48,
+                  ),
+                  height: constraints.maxHeight,
+                  child: TextField(
+                    key: fieldKey,
+                    controller: controller,
+                    undoController: undoController,
+                    expands: true,
+                    maxLines: null,
+                    minLines: null,
+                    textAlignVertical: TextAlignVertical.top,
+                    textDirection: TextDirection.ltr,
+                    keyboardType: TextInputType.multiline,
+                    style: style,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    smartDashesType: SmartDashesType.disabled,
+                    smartQuotesType: SmartQuotesType.disabled,
+                    decoration: InputDecoration(
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      filled: false,
+                      contentPadding: const EdgeInsets.all(20),
+                      hintText: hintText,
+                    ),
+                    onChanged: onChanged,
+                  ),
                 ),
-                onChanged: onChanged,
               ),
             ),
           ),
-        ),
-      ),
     );
   }
 }

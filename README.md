@@ -1,6 +1,6 @@
 # Music Hub
 
-A local-first music workspace for iOS and Android, with iPhone as the lead test device. Version 0.5 adds a persistent free-form tab grid, selected after the Stage 4 iPhone prototype comparison.
+A local-first music workspace for iOS and Android, with iPhone as the lead test device. Version 0.6 finalizes plain-text ASCII tabs and adds the Stage 6 metronome.
 
 ## Song sheets
 
@@ -22,9 +22,15 @@ Songs autosave locally and have an explicit Save action. Performance mode offers
 
 ## Tabs
 
-Open a song and tap **Tab**. Start with six string rows and twelve columns; type any text into a cell using the normal keyboard. Frets, techniques, punctuation and other text are preserved without interpretation. Use keyboard Next or the arrow toolbar to move cells while keeping the keyboard open. String labels stay visible while columns scroll horizontally. Add another six-row block when needed.
+Open a song and tap **Tab**. Edit one monospaced ASCII document with the normal keyboard. New tabs start with a blank six-string block. Spaces, punctuation, annotations and arbitrary text stay as typed; long lines scroll horizontally without wrapping. **+ Tab Block** appends another blank block.
 
-Blocks are consecutive chunks of the same tab. Columns have stable IDs and order, but no beats or durations. Tabs autosave locally under the song's hidden arrangement, independently of its chord/lyric sheet. Save explicitly or wait for Saved on this device before force-quitting. Tab lab is retired from navigation; Stage 4 selected this simpler grid. See [the roadmap](docs/roadmap.md).
+Tabs autosave locally under the song’s hidden arrangement, independently of chords/lyrics. Older grids migrate on opening: ordinary cells become aligned ASCII rows; multiline/tab-containing cells are retained verbatim below the block with labeled references. No history storage is added. See [the roadmap](docs/roadmap.md).
+
+## Metronome
+
+Tap **Metronome** in primary navigation. Set 40–240 BPM, tap tempo, choose a time signature, and tap individual beats to cycle normal/accented/silent. Start and Stop control local audio; settings persist. BPM counts the displayed note unit. Changing settings during playback restarts the bar.
+
+Clicks are generated at precise sample positions in a native looping audio track, without network or microphone access. Leaving, backgrounding or audio interruption stops playback; restart manually. Native timing, loop transitions and route changes still require iPhone acceptance.
 
 ## Recordings
 

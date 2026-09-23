@@ -1,4 +1,5 @@
 import 'tab_screen.dart';
+import 'metronome_screen.dart';
 import 'delete_action.dart';
 import 'tuner_screen.dart';
 import 'dart:async';
@@ -170,10 +171,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
     bottomNavigationBar: NavigationBar(
       selectedIndex: page,
       onDestinationSelected: (index) {
-        if (index == 2) {
+        if (index == 2 || index == 3) {
           Navigator.of(context).push(
             MaterialPageRoute<void>(
-              builder: (_) => TunerScreen(store: widget.store),
+              builder: (_) => index == 2
+                  ? TunerScreen(store: widget.store)
+                  : MetronomeScreen(store: widget.store),
             ),
           );
           return;
@@ -194,6 +197,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
           label: 'Recordings',
         ),
         NavigationDestination(icon: Icon(Icons.tune), label: 'Tuner'),
+        NavigationDestination(
+          icon: Icon(Icons.timer_outlined),
+          label: 'Metronome',
+        ),
       ],
     ),
     body: SafeArea(

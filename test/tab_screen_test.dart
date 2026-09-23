@@ -9,10 +9,11 @@ import 'package:music_hub/audio_files.dart';
 import 'package:music_hub/document.dart';
 import 'package:music_hub/main.dart';
 import 'package:music_hub/store.dart';
+import 'package:music_hub/tab_document.dart';
 
 void main() {
   testWidgets(
-    'song tab keeps keyboard across cells and added blocks, then saves/reopens verbatim',
+    'ASCII tab preserves text and appends blocks, then saves/reopens verbatim',
     (tester) async {
       sqfliteFfiInit();
       tester.view.physicalSize = const Size(390, 844);
@@ -28,7 +29,7 @@ void main() {
           location: '${root.path}/db.sqlite',
         ),
       ))!;
-      final song = SongDocument(title: 'Grid song');
+      final song = SongDocument(title: 'ASCII song');
       await tester.runAsync(() => store.save(song));
       final boundaryKey = GlobalKey();
       final screenshots = Platform.environment['MUSIC_HUB_SCREENSHOTS'];
@@ -60,7 +61,7 @@ void main() {
         await tester.pumpAndSettle();
       }
 
-      Finder cell(int c, int r) => find.byKey(ValueKey('tab-cell-$c-$r'));
+      final field = find.byKey(const Key('tab-text'));
       await tester.pumpWidget(
         RepaintBoundary(
           key: boundaryKey,
@@ -69,29 +70,19 @@ void main() {
       );
       await flush();
       expect(find.text('Tab lab'), findsNothing);
-      await tester.tap(find.text('Grid song'));
+      await tester.tap(find.text('ASCII song'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Tab'));
       await tester.pump();
       await flush();
-      expect(find.byType(TextField), findsNWidgets(72));
-      await tester.tap(cell(0, 0));
-      await tester.enterText(cell(0, 0), r' 7\6 :) ');
+      expect(find.byType(TextField), findsOneWidget);
+      expect(tester.widget<TextField>(field).controller!.text, blankTabBlock);
+      const raw =
+          'e|----0h2---3/5----7\\6----|\nB|  x  :)   🎸  |\n  annotations  \n';
+      await tester.enterText(field, raw);
       expect(tester.testTextInput.isVisible, true);
-      await tester.tap(find.byTooltip('Next cell'));
-      await tester.pumpAndSettle();
-      expect(tester.widget<TextField>(cell(1, 0)).focusNode!.hasFocus, true);
-      expect(tester.testTextInput.isVisible, true);
-      await tester.enterText(cell(1, 0), '0h2\n 🎸 ');
-      await tester.testTextInput.receiveAction(TextInputAction.next);
-      await tester.pumpAndSettle();
-      expect(tester.widget<TextField>(cell(2, 0)).focusNode!.hasFocus, true);
-      expect(tester.testTextInput.isVisible, true);
-      await tester.enterText(cell(2, 0), '3/5');
-      await tester.tap(find.byTooltip('String below'));
-      await tester.pumpAndSettle();
-      expect(tester.widget<TextField>(cell(2, 1)).focusNode!.hasFocus, true);
-      await tester.enterText(cell(2, 1), ':)');
+      expect(tester.widget<TextField>(field).style!.fontFamily, 'Courier');
+      expect(tester.getSize(field).width, greaterThan(390));
       if (screenshots != null) {
         await tester.tap(find.text('Done'));
         await tester.pumpAndSettle();
@@ -103,7 +94,7 @@ void main() {
           final image = await boundary.toImage(pixelRatio: 2);
           final png = await image.toByteData(format: ui.ImageByteFormat.png);
           await File(
-            '$screenshots/tab-grid.png',
+            '$screenshots/tab-ascii.png',
           ).writeAsBytes(png!.buffer.asUint8List());
           image.dispose();
         });
@@ -111,19 +102,16 @@ void main() {
       tester.view.viewInsets = const FakeViewPadding(bottom: 300);
       addTearDown(tester.view.resetViewInsets);
       await tester.pump();
-      await tester.tap(find.byTooltip('Add block'));
+      await tester.tap(find.text('Tab Block'));
       await tester.pumpAndSettle();
-      expect(tester.widget<TextField>(cell(12, 1)).focusNode!.hasFocus, true);
-      expect(tester.testTextInput.isVisible, true);
-      await tester.enterText(cell(12, 1), '  x ');
+      final expected = '$raw\n$blankTabBlock';
+      expect(tester.widget<TextField>(field).controller!.text, expected);
       await tester.tap(find.text('Save'));
       await flush();
       final saved = (await tester.runAsync(
         () => store.loadTab(song.arrangementId),
       ))!;
-      expect(saved.positions.length, 24);
-      expect(saved.positions[0].cells[0], r' 7\6 :) ');
-      expect(saved.positions[1].cells[0], '0h2\n 🎸 ');
+      expect(saved.text, expected);
       tester.view.resetViewInsets();
       await tester.tap(find.byTooltip('Back to song'));
       await tester.pump();
@@ -131,8 +119,7 @@ void main() {
       await tester.tap(find.text('Tab'));
       await tester.pump();
       await flush();
-      expect(tester.widget<TextField>(cell(12, 1)).controller!.text, '  x ');
-      expect(tester.widget<TextField>(cell(2, 0)).controller!.text, '3/5');
+      expect(tester.widget<TextField>(field).controller!.text, expected);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
       await tester.pumpAndSettle();

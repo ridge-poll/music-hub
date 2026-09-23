@@ -1,3 +1,5 @@
+> Final Stage 5 revision: the production editor is now one plain-text ASCII document. This study remains historical.
+
 # Stage 4: archived iPhone tab-entry comparison
 
 Stage 4 is complete. The user tested the variants and selected a simpler free-form text grid for Stage 5. Tab lab is no longer in app navigation. The instructions below document the historical prototypes, not the current editor.

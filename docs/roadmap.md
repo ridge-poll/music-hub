@@ -1,8 +1,8 @@
 # Delivery sequence
 
-## Current stage: Stage 5 — persistent free-form tab grid
+## Current stage: Stage 6 — metronome
 
-Status: Stage 5 implemented; automated checks passed; ready for iPhone acceptance. Following hands-on Stage 4 testing, the user chose a much simpler spreadsheet-style text grid instead of specialized fret/string entry. This is the accepted interaction direction; no additional prototype-selection gate remains.
+Status: final Stage 5 ASCII-text revision implemented; Stage 6 metronome implemented; automated model, storage and UI checks passed. Next acceptance is on the actual iPhone.
 
 ## Stage 1 — complete: chords → local save → reopen → performance
 
@@ -29,23 +29,31 @@ One-tap recording, live input level, pause/resume/stop, durable unfinished-take 
 
 ## Stage 4 — complete: interaction study and user decision
 
-The fretboard, fret-first keypad, active-string keypad and thumbwheel prototypes were tested by the user on iPhone. Their qualitative finding was that specialized input added unnecessary complexity. The chosen direction is ordinary editable text cells. No quantitative scores or ranking are inferred. Tab lab has been removed from app navigation; its source and [study guide](tab-lab.md) remain historical prototypes, separate from production storage.
+The fretboard, fret-first keypad, active-string keypad and thumbwheel prototypes were tested by the user on iPhone. Their qualitative finding was that specialized input added unnecessary complexity. The initial choice was ordinary editable text cells; the final Stage 5 revision simplifies this further to one plain-text ASCII document. No quantitative scores or ranking are inferred. Tab lab has been removed from app navigation; its source and [study guide](tab-lab.md) remain historical prototypes, separate from production storage.
 
-## Stage 5 — current: persistent free-form tab editor
+## Stage 5 — final revision: persistent ASCII tabs
 
-- Open **Tab** from a song. The tab belongs to that song's hidden arrangement, stored independently of the chord/lyric sheet.
-- Start with one block of six string rows and 12 columns. Each cell is an ordinary free-form text field: no fret, technique or notation validation, and no interpretation. Preserve text exactly, including spaces, punctuation, Unicode and pasted line breaks.
-- Normal keyboard entry, direct cell taps, next/previous and up/down controls, keyboard Next, and horizontal scrolling. Moving cells transfers focus without intentionally dismissing the keyboard; Done dismisses it.
-- Add another six-row/12-column block as the tab grows. Blocks are consecutive display chunks of one tab, not musical sections.
-- Columns have stable client UUIDs and explicit array order across all blocks. No beats, durations or rhythmic meaning are assigned. Future timing/audio associations can reference a column without reinterpreting current text.
-- Local debounced autosave, explicit Save, save-before-navigation, monotonic document revisions and stale/deleted-parent protection. No saved-version history is reintroduced.
-- Swipe-delete refinement: the red region extends behind the moving rounded card so the revealed area stays continuously red.
+- Open **Tab** from a song. One monospaced plain-text editor replaces the grid. New tabs start with the requested six-string blank ASCII block, high e to low E.
+- Exact text/spacing, normal keyboard, selection and copy/paste; horizontal scrolling instead of automatic line wrapping. No parsing, validation, rhythm or specialized input controls.
+- **+ Tab Block** appends another blank six-string block. Existing text is not replaced or trimmed.
+- Existing format-1 grids convert to format-2 text on opening and autosave using the same document/arrangement identity and normal revision checks. Single-line cells become padded ASCII rows. Cells containing tabs or line breaks receive a labeled reference and a verbatim text entry below the blocks, preserving their complete contents. No history system or hidden grid copies are added.
+- Song/arrangement ownership, local autosave, Save, save-before-navigation, stale-write protection and deletion behavior remain.
+- Stable grid-column IDs are retired by this explicit text-only revision. Future audio alignment needs separate annotations; text is not interpreted as musical positions.
+- Swipe-delete red reveal continuity from Stage 5 remains.
+
+## Stage 6 — current: metronome
+
+- One-tap Metronome from primary navigation. BPM 40–240, tap tempo, 1–12 beats per bar and denominator 2/4/8.
+- Each beat cycles normal → accented → silent. Default 4/4 accents the first beat. BPM counts the displayed note unit; changing the denominator does not silently rescale tempo.
+- Sample-positioned PCM clicks generated entirely on-device, played as a native looping WAV using the existing audio stack. UI refreshes do not schedule clicks. A whole-bar loop lasts approximately one minute; device acceptance must check the loop boundary.
+- Start/Stop, highlighted beats and local preference persistence. Tempo/signature/accent changes restart on the first beat; no subdivisions, swing or tempo automation.
+- Foreground-only playback. Backgrounding, interruption, output disconnection and leaving stop playback; restart is explicit. No microphone access or new dependencies.
 
 ## Next
 
-1. Validate Stage 5 on iPhone: arbitrary text, keyboard-preserving navigation, additional blocks, local save/reopen and song isolation. Check swipe reveal continuity.
-2. Refine the grid only from actual usage; do not reintroduce specialized fret/keypad entry or musical parsing without a new decision.
-3. Remaining V1 work: metronome, A/B loops, derived-asset trim/waveform, simple notes and file interchange. Priorities beyond Stage 5 remain to be chosen.
+1. Validate final ASCII tabs on iPhone: upgrade an existing grid, inspect all content, edit/paste, add a block, save/reopen and check horizontal scrolling.
+2. Validate the metronome on speaker/headphones at slow and fast tempos, through a full loop, with signature/accent changes and interruptions. Verify switching between tuner, recorder, playback and metronome.
+3. After Stage 6 acceptance, choose the next remaining V1 slice: A/B loops, derived-asset trim/waveform, simple notes or file interchange.
 
 Full ChordPro/file interchange, transpose/capo, tags/folders, sync/backup and the remaining V1 scope are not complete.
 

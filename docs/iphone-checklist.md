@@ -60,3 +60,14 @@ Stage 4 decision: after testing the prototypes, the user chose an ordinary sprea
 - Restart the app after Saved on this device; confirm block count, text and song separation. Confirm chord-sheet edits do not replace tabs or vice versa.
 - Delete the song and verify it stays deleted. Open swipe-to-delete on songs/recordings and inspect for a continuous red reveal with no normal-background seam.
 - Confirm room-acoustics profiling appears only in the roadmap; no excitation or profiling feature is added in this release.
+
+
+## Final Stage 5 revision + Stage 6 acceptance — 0.6
+
+- Upgrade with an existing grid tab. Open it and compare all entries, including spacing, Unicode and any multiline/tab-containing cells (preserved verbatim below the converted block). Save, leave, force-close after saved status, and reopen.
+- Create a new tab: six blank ASCII strings. Paste the sample riff; verify no wrapping, horizontal scrolling, exact spaces, normal selection and keyboard editing. Append a Tab Block and confirm the existing text remains untouched. Test empty text and undo/redo.
+- Metronome: test 40, 100, 137 and 240 BPM on speaker/headphones. Listen beyond 65 seconds for an even loop boundary. Compare pacing against a trusted metronome; widget tests do not certify native audio timing.
+- Tap tempo at a steady pace, pause over three seconds, tap a new pace. Try 3/4, 6/8 and 7/8. BPM counts each displayed note unit; there is no compound-meter grouping.
+- Cycle individual beats through normal, accented and silent. Verify sound and highlighting agree; settings changes intentionally restart at beat one. Close/reopen and confirm preferences, without automatic playback.
+- Stop while preparing/playing. Leave immediately after Start; background, receive an interruption, disconnect headphones and return. Audio must stop and require explicit restart.
+- Switch metronome → tuner → recording → playback → metronome, checking audio-session recovery. Check Bluetooth latency separately; the visual indicator is approximate and is not a hardware latency measurement.
