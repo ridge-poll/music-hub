@@ -80,9 +80,12 @@ void main() {
             (call) async => null,
           );
       Future<void> settleIo() async {
-        await tester.runAsync(
-          () => Future<void>.delayed(const Duration(milliseconds: 150)),
-        );
+        for (var i = 0; i < 4; i++) {
+          await tester.pump(const Duration(milliseconds: 100));
+          await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 70)),
+          );
+        }
         await tester.pumpAndSettle();
       }
 
@@ -93,8 +96,9 @@ void main() {
         ),
       );
       await settleIo();
-      expect(find.text('Record'), findsOneWidget);
-      await tester.tap(find.text('New song'));
+      await tester.tap(find.text('New'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Chords/Lyrics'));
       await tester.pumpAndSettle();
       await tester.enterText(find.byKey(const Key('title')), 'Porch light');
       const text =
@@ -144,46 +148,53 @@ void main() {
       });
     },
   );
-  testWidgets('Record is one tap away and denial creates no empty recording', (
-    tester,
-  ) async {
-    sqfliteFfiInit();
-    final previous = RecordPlatform.instance;
-    final denied = DeniedRecorder();
-    RecordPlatform.instance = denied;
-    addTearDown(() {
-      RecordPlatform.instance = previous;
-    });
-    final root = (await tester.runAsync(
-      () => Directory.systemTemp.createTemp('audio_ui_'),
-    ))!;
-    final files = AudioFiles(root);
-    final store = (await tester.runAsync(
-      () => MusicStore.open(
-        factory: databaseFactoryFfi,
-        location: '${root.path}/db.sqlite',
-      ),
-    ))!;
-    await tester.pumpWidget(MusicHub(store: store, files: files));
-    await tester.runAsync(
-      () => Future<void>.delayed(const Duration(milliseconds: 100)),
-    );
-    await tester.pumpAndSettle();
-    expect(denied.requests, 0);
-    await tester.tap(find.text('Record'));
-    await tester.pumpAndSettle();
-    expect(denied.requests, 1);
-    expect(find.textContaining('Microphone access is off'), findsOneWidget);
-    expect(find.text('Start recording'), findsOneWidget);
-    expect((await tester.runAsync(files.pending))!, isEmpty);
-    expect((await tester.runAsync(store.recordings))!, isEmpty);
-    await tester.pumpWidget(const SizedBox());
-    await tester.pumpAndSettle();
-    await tester.runAsync(() async {
-      await store.close();
-      await root.delete(recursive: true);
-    });
-  });
+  testWidgets(
+    'Recordings offers capture and denial creates no empty recording',
+    (tester) async {
+      sqfliteFfiInit();
+      final previous = RecordPlatform.instance;
+      final denied = DeniedRecorder();
+      RecordPlatform.instance = denied;
+      addTearDown(() {
+        RecordPlatform.instance = previous;
+      });
+      final root = (await tester.runAsync(
+        () => Directory.systemTemp.createTemp('audio_ui_'),
+      ))!;
+      final files = AudioFiles(root);
+      final store = (await tester.runAsync(
+        () => MusicStore.open(
+          factory: databaseFactoryFfi,
+          location: '${root.path}/db.sqlite',
+        ),
+      ))!;
+      await tester.pumpWidget(MusicHub(store: store, files: files));
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 100)),
+      );
+      await tester.pumpAndSettle();
+      expect(denied.requests, 0);
+      await tester.tap(find.text('Recordings'));
+      await tester.pump();
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 100)),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Record'));
+      await tester.pumpAndSettle();
+      expect(denied.requests, 1);
+      expect(find.textContaining('Microphone access is off'), findsOneWidget);
+      expect(find.text('Start recording'), findsOneWidget);
+      expect((await tester.runAsync(files.pending))!, isEmpty);
+      expect((await tester.runAsync(store.recordings))!, isEmpty);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+      await tester.runAsync(() async {
+        await store.close();
+        await root.delete(recursive: true);
+      });
+    },
+  );
 
   testWidgets('backgrounding finalizes capture and keeps a recoverable draft', (
     tester,
@@ -215,6 +226,12 @@ void main() {
     await tester.pumpWidget(MusicHub(store: store, files: files));
     await flushIo();
     await tester.pumpAndSettle();
+    await tester.tap(find.text('Recordings'));
+    await tester.pump();
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 100)),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Record'));
     await tester.pump();
     for (var attempt = 0; attempt < 20 && !fake.recording; attempt++) {
@@ -222,7 +239,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
     }
     expect(fake.recording, true);
-    expect(find.text('Listening…'), findsOneWidget);
+    expect(find.text('Recording'), findsOneWidget);
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);

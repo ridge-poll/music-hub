@@ -1,140 +1,49 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'delete_action.dart';
 import 'document.dart';
+import 'delete_action.dart';
 import 'note.dart';
 import 'store.dart';
 
-class NotesScreen extends StatefulWidget {
-  const NotesScreen({super.key, required this.store, this.song});
+class SongNotesScreen extends StatefulWidget {
+  const SongNotesScreen({super.key, required this.store, required this.song});
   final MusicStore store;
-  final SongDocument? song;
+  final SongDocument song;
   @override
-  State<NotesScreen> createState() => _NotesScreenState();
+  State<SongNotesScreen> createState() => _SongNotesScreenState();
 }
 
-class _NotesScreenState extends State<NotesScreen> {
-  late Future<List<MusicNote>> notes = widget.store.notes(
-    songId: widget.song?.id,
-  );
-  void refresh() {
-    if (mounted) {
-      setState(() {
-        notes = widget.store.notes(songId: widget.song?.id);
-      });
-    }
-  }
-
-  Future<void> open(MusicNote note) async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute<void>(
-        builder: (_) => NoteScreen(store: widget.store, note: note),
-      ),
-    );
-    refresh();
-  }
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: Text(
-        widget.song == null
-            ? 'Notes & ideas'
-            : '${widget.song!.title.isEmpty ? 'Song' : widget.song!.title} · Notes',
-      ),
-    ),
-    floatingActionButton: FloatingActionButton.extended(
-      onPressed: () => open(
-        MusicNote(songId: widget.song?.id, songTitle: widget.song?.title),
-      ),
-      icon: const Icon(Icons.edit_note),
-      label: const Text('New note'),
-    ),
-    body: FutureBuilder<List<MusicNote>>(
-      future: notes,
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return Center(
-            child: TextButton(
-              onPressed: refresh,
-              child: const Text('Could not load notes. Retry'),
-            ),
-          );
-        }
-        if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.data!.isEmpty) {
-          return const Center(
-            child: Text('A riff idea, a reminder, a few words.'),
-          );
-        }
-        return ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-          children: [
-            for (final note in snapshot.data!)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: SwipeDelete(
-                  onDelete: () async {
-                    if (await confirmDelete(
-                      context,
-                      'Note',
-                      () => widget.store.deleteNote(note.id),
-                      detail: 'This note will be removed from your library.',
-                    )) {
-                      refresh();
-                    }
-                  },
-                  child: Card(
-                    margin: EdgeInsets.zero,
-                    child: ListTile(
-                      onTap: () => open(note),
-                      title: Text(
-                        note.title.isEmpty ? 'Untitled idea' : note.title,
-                      ),
-                      subtitle: Text(
-                        note.text.isEmpty
-                            ? note.songTitle ?? 'Unattached idea'
-                            : note.text,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        );
-      },
-    ),
-  );
-}
-
-class NoteScreen extends StatefulWidget {
-  const NoteScreen({super.key, required this.store, required this.note});
-  final MusicStore store;
-  final MusicNote note;
-  @override
-  State<NoteScreen> createState() => _NoteScreenState();
-}
-
-class _NoteScreenState extends State<NoteScreen> with WidgetsBindingObserver {
-  late final title = TextEditingController(text: widget.note.title);
-  late final text = TextEditingController(text: widget.note.text);
+class _SongNotesScreenState extends State<SongNotesScreen>
+    with WidgetsBindingObserver {
+  late final title = TextEditingController(text: widget.song.title);
+  final text = TextEditingController();
+  MusicNote? note;
+  bool deleting = false;
   Timer? debounce;
   Future<bool>? pending;
-  int generation = 0, saved = -1;
-  bool leaving = false, exiting = false, deleting = false;
-  String status = 'Not saved yet';
+  int generation = 0, saved = 0;
+  bool leaving = false, exiting = false;
+  String status = '';
+  String? loadError;
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    if (widget.note.revision > 0) {
-      saved = 0;
-      status = 'Saved on this device';
+    unawaited(load());
+  }
+
+  Future<void> load() async {
+    try {
+      final value = await widget.store.songNote(widget.song);
+      if (mounted) {
+        setState(() {
+          note = value;
+          text.text = value.text;
+          loadError = null;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => loadError = 'Could not open notes.');
     }
   }
 
@@ -157,16 +66,22 @@ class _NoteScreenState extends State<NoteScreen> with WidgetsBindingObserver {
       if (!await pending!) return false;
       return save();
     }
-    if (saved == generation) return true;
+    if (note == null || saved == generation) return true;
+    final song = SongDocument.decode(widget.song.encode(), widget.song.revision)
+      ..title = title.text.trim();
+    if (song.revision == 0 && song.isBlank && text.text.trim().isEmpty) {
+      saved = generation;
+      if (mounted) setState(() => status = "Not saved yet");
+      return true;
+    }
     final version = generation;
     final snapshot = MusicNote(
-      id: widget.note.id,
-      title: title.text,
+      id: note!.id,
       text: text.text,
-      revision: widget.note.revision,
-      songId: widget.note.songId,
+      revision: note!.revision,
+      songId: song.id,
     );
-    final operation = persist(snapshot, version);
+    final operation = persist(snapshot, song, version);
     pending = operation;
     final ok = await operation;
     pending = null;
@@ -174,22 +89,28 @@ class _NoteScreenState extends State<NoteScreen> with WidgetsBindingObserver {
     return ok;
   }
 
-  Future<bool> persist(MusicNote snapshot, int version) async {
+  Future<bool> persist(
+    MusicNote snapshot,
+    SongDocument song,
+    int version,
+  ) async {
     try {
-      final ok = await widget.store.saveNote(snapshot);
+      // A title-only edit can create a Song without an empty child document.
+      final ok = snapshot.revision == 0 && snapshot.text.trim().isEmpty
+          ? await widget.store.save(song)
+          : await widget.store.saveNote(snapshot, song: song);
+      if (ok) {
+        widget.song.revision = song.revision;
+        widget.song.title = song.title;
+        note!.revision = snapshot.revision;
+        saved = version;
+      }
       if (mounted) {
-        setState(() {
-          if (ok) {
-            widget.note.revision = snapshot.revision;
-            saved = version;
-            status = version == generation
-                ? 'Saved on this device'
-                : 'Unsaved changes';
-          } else {
-            status =
-                'This note changed or was deleted. Your unsaved text is still here.';
-          }
-        });
+        setState(
+          () => status = ok
+              ? 'Saved on this device'
+              : 'This song changed. Your unsaved text is still here.',
+        );
       }
       return ok;
     } catch (_) {
@@ -198,7 +119,7 @@ class _NoteScreenState extends State<NoteScreen> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> leave() async {
+  Future<void> leave({bool workspace = false}) async {
     if (exiting) return;
     exiting = true;
     if (!await save() || !mounted) {
@@ -207,53 +128,27 @@ class _NoteScreenState extends State<NoteScreen> with WidgetsBindingObserver {
     }
     setState(() => leaving = true);
     await WidgetsBinding.instance.endOfFrame;
-    if (mounted) Navigator.pop(context);
+    if (mounted) Navigator.pop(context, workspace ? 'workspace' : null);
   }
 
-  Future<void> attach() async {
-    if (!await save() || !mounted) return;
-    try {
-      final songs = await widget.store.list();
+  Future<void> deleteSong() async {
+    deleting = true;
+    debounce?.cancel();
+    await pending;
+    if (!mounted) return;
+    if (await confirmDelete(
+      context,
+      'Song',
+      () => widget.store.deleteSong(widget.song.id),
+      detail: 'Its documents will be deleted. Recordings remain in Recordings.',
+    )) {
       if (!mounted) return;
-      final selected = await showModalBottomSheet<String>(
-        context: context,
-        showDragHandle: true,
-        builder: (context) => SafeArea(
-          child: ListView(
-            shrinkWrap: true,
-            children: [
-              ListTile(
-                title: const Text('Unattached idea'),
-                onTap: () => Navigator.pop(context, ''),
-              ),
-              for (final song in songs)
-                ListTile(
-                  title: Text(
-                    song.title.isEmpty ? 'Untitled song' : song.title,
-                  ),
-                  onTap: () => Navigator.pop(context, song.id),
-                ),
-            ],
-          ),
-        ),
-      );
-      if (selected == null) return;
-      await widget.store.attachNote(
-        widget.note.id,
-        selected.isEmpty ? null : selected,
-      );
-      if (mounted) {
-        setState(() {
-          widget.note.songId = selected.isEmpty ? null : selected;
-          widget.note.songTitle = selected.isEmpty
-              ? null
-              : songs.firstWhere((s) => s.id == selected).title;
-        });
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(() => status = 'Could not change attachment. Try again.');
-      }
+      setState(() => leaving = true);
+      await WidgetsBinding.instance.endOfFrame;
+      if (mounted) Navigator.pop(context);
+    } else {
+      deleting = false;
+      if (mounted) unawaited(save());
     }
   }
 
@@ -283,86 +178,80 @@ class _NoteScreenState extends State<NoteScreen> with WidgetsBindingObserver {
     child: Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          tooltip: 'Back from note',
+          tooltip: 'Back from notes',
           onPressed: leave,
           icon: const Icon(Icons.arrow_back),
         ),
-        title: const Text('Note'),
-        actions: [TextButton(onPressed: save, child: const Text('Save'))],
+        title: const Text('Notes'),
+        actions: [
+          IconButton(
+            tooltip: 'Song workspace',
+            onPressed: () => leave(workspace: true),
+            icon: const Icon(Icons.folder_open),
+          ),
+          TextButton(onPressed: save, child: const Text('Save')),
+        ],
       ),
       body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        child: note == null
+            ? Center(
+                child: loadError == null
+                    ? const CircularProgressIndicator()
+                    : TextButton(
+                        onPressed: load,
+                        child: Text('$loadError Retry'),
+                      ),
+              )
+            : Column(
                 children: [
-                  TextField(
-                    key: const Key('note-title'),
-                    controller: title,
-                    decoration: const InputDecoration(hintText: 'Idea title'),
-                    onChanged: (_) => changed(),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: TextField(
+                      key: const Key('note-title'),
+                      controller: title,
+                      decoration: const InputDecoration(
+                        hintText: 'Untitled song',
+                        border: InputBorder.none,
+                      ),
+                      onChanged: (_) => changed(),
+                    ),
                   ),
-                  Text(status, style: const TextStyle(fontSize: 12)),
-                  TextButton.icon(
-                    onPressed: attach,
-                    icon: const Icon(Icons.link, size: 18),
-                    label: Text(widget.note.songTitle ?? 'Attach to a song'),
+                  if (status.isNotEmpty)
+                    Text(status, style: Theme.of(context).textTheme.labelSmall),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: TextField(
+                      key: const Key('note-text'),
+                      controller: text,
+                      expands: true,
+                      maxLines: null,
+                      textAlignVertical: TextAlignVertical.top,
+                      decoration: const InputDecoration(
+                        hintText: 'Notes',
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.all(20),
+                      ),
+                      onChanged: (_) => changed(),
+                    ),
                   ),
+                  if (widget.song.revision > 0 &&
+                      MediaQuery.viewInsetsOf(context).bottom == 0)
+                    TextButton(
+                      onPressed: deleteSong,
+                      child: Text(
+                        'Delete Song',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                    ),
+                  if (MediaQuery.viewInsetsOf(context).bottom > 0)
+                    TextButton(
+                      onPressed: () => FocusScope.of(context).unfocus(),
+                      child: const Text('Done'),
+                    ),
                 ],
               ),
-            ),
-            Expanded(
-              child: TextField(
-                key: const Key('note-text'),
-                autofocus: widget.note.revision == 0,
-                controller: text,
-                expands: true,
-                maxLines: null,
-                textAlignVertical: TextAlignVertical.top,
-                decoration: const InputDecoration(
-                  hintText: 'Write anything…',
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.all(20),
-                ),
-                onChanged: (_) => changed(),
-              ),
-            ),
-            if (MediaQuery.viewInsetsOf(context).bottom > 0)
-              TextButton(
-                onPressed: () => FocusScope.of(context).unfocus(),
-                child: const Text('Done'),
-              )
-            else
-              TextButton(
-                onPressed: () async {
-                  deleting = true;
-                  debounce?.cancel();
-                  await pending;
-                  if (!context.mounted) return;
-                  if (await confirmDelete(
-                        context,
-                        'Note',
-                        () => widget.store.deleteNote(widget.note.id),
-                        detail: 'This note will be removed from your library.',
-                      ) &&
-                      mounted) {
-                    setState(() => leaving = true);
-                    await WidgetsBinding.instance.endOfFrame;
-                    if (context.mounted) Navigator.pop(context);
-                  } else {
-                    deleting = false;
-                    if (mounted && saved != generation) unawaited(save());
-                  }
-                },
-                child: const Text(
-                  'Delete Note',
-                  style: TextStyle(color: Colors.red),
-                ),
-              ),
-          ],
-        ),
       ),
     ),
   );

@@ -1,10 +1,10 @@
-# Verification — 24 September 2026, version 0.7
+# Verification — 24 September 2026, version 0.7.1
 
 ## Passed
 
 - Flutter static analysis: no issues.
-- 69 pure Dart tests covering authored documents, SQLite persistence/upgrades, revisions/stale writes, tombstones, immutable recordings/drafts, tuner DSP/tracking, metronome synthesis, tempo estimation, notes and practice-loop coordinates.
-- 24 Flutter-run tests covering existing song/recording/tuner/prototype flows, fixed-position editing and narrow-screen rendering, tab save/reopen, metronome lifecycle, microphone BPM capture/application/cancellation, notes workflow and A/B playback controls.
+- 72 pure Dart tests covering authored documents, SQLite persistence/upgrades, revisions/stale writes, tombstones, immutable recordings/drafts, tuner DSP/tracking, metronome synthesis, tempo estimation, notes and practice-loop coordinates.
+- 25 Flutter-run tests covering existing song/recording/tuner/prototype flows, fixed-position editing and narrow-screen rendering, tab save/reopen, metronome lifecycle, microphone BPM capture/application/cancellation, notes workflow and A/B playback controls.
 - Formatting and diff whitespace checks.
 
 ## Fixed-width tabs
@@ -21,17 +21,19 @@ Widget tests feed split PCM chunks through a fake recorder into the actual isola
 
 The estimator uses a smoothed energy-rise onset envelope and normalized autocorrelation. [Librosa’s tempo documentation](https://librosa.org/doc/0.11.0/generated/librosa.feature.tempo.html) provides background on onset-autocorrelation tempo estimation; this app uses its own small Dart implementation, without Librosa, ML or network calls. Half/double ambiguity is exposed to the user rather than silently changing tempo.
 
-## Stage 7 workflow
+## Stage 7 Song-first revision
 
-A real SQLite test saves a standalone note, attaches it, edits it independently, rejects a stale save, reopens the database, detaches it through song deletion and checks confirmed note tombstones. The widget workflow captures an idea without a song, attaches it, reopens it through the song's Notes, and tests cancel/confirm deletion.
+SQLite checks cover last-edited ordering across chords, tabs, notes, recording attachment and deletion. Read-only visits and identical saves retain timestamps/revisions. A first child document and its new Song commit atomically; duplicate notes and mismatched parents cannot leave partial metadata changes. Upgrade fixtures cover database versions 1, 2 and 3, including standalone notes converted into Songs, all titles/bodies retained when consolidating attached notes, existing recordings preserved, and an inert second reopen. Old fixtures were adjusted to remove the new columns before simulating an older schema.
 
-Practice-loop tests validate region bounds/minimum length and original-versus-clip time conversion. A fake native player verifies that A/B applies clipping plus repeat, an absolute 3-second seek becomes 1 second inside a 2–4-second clip, and clearing A/B restores the original source/repeat mode. These tests check control semantics; they do not play actual native audio.
+Phone-sized widget workflows cover untouched and whitespace-only + New visits, default/extra blank tab blocks creating nothing, notes-only and tab-only direct opening, multi-component workspace routing, Song-side recording attachment, and Dark Mode persistence across rebuilding the app. Existing confirmed song/recording deletion, interrupted capture and microphone denial tests still pass. Test IO waits include the route/FAB animation and subsequent SQLite work.
 
-Inspected phone-sized previews: `workflow-library.png`, `workflow-note.png`, `recording-ab-loop.png`, `metronome.png` and `tab-fixed.png`. Screenshots are widget renders, not captures from the user's phone.
+The playback test drags both real timeline handles to a 2–4-second region and verifies native clipping and repeat. Tapping at three seconds produces a one-second seek inside that clip. Dragging both handles back to the ends restores the full source and disables repeat. No second Slider or RangeSlider exists. These tests check control semantics with a fake player; they do not play actual native audio.
+
+Inspected current phone-sized renders: `workflow-library.png`, `workflow-note.png`, `song-workspace.png`, `recording-ab-loop.png`, `settings-dark.png` and `tab-fixed.png`. Other screenshots document earlier stages. These are widget renders, not captures from the user's phone.
 
 ## Physical-device status
 
-The user reports Stage 6 metronome is looking good on iPhone. The new overwrite editor, microphone BPM estimation and Stage 7 workflows still need iPhone acceptance. No new native iOS/Android build or device session was performed by this tool. In particular, actual keyboard/composition behavior, music tempo estimation, microphone release/audio-session switching, native A/B boundaries and Bluetooth latency require the [iPhone checklist](iphone-checklist.md).
+The user reports Stage 6 metronome is looking good on iPhone. The Song-first Stage 7 revision needs iPhone acceptance before Stage 8. The overwrite editor and microphone BPM estimation also retain their device checklist where not yet accepted. No new native iOS/Android build or device session was performed by this tool. In particular, actual keyboard/composition behavior, music tempo estimation, microphone release/audio-session switching, native A/B boundaries and Bluetooth latency require the [iPhone checklist](iphone-checklist.md).
 
 ## Reproduce
 

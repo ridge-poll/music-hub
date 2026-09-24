@@ -7,7 +7,7 @@ import 'package:music_hub/store.dart';
 
 void main() {
   test(
-    'standalone notes persist, attach independently and survive song deletion',
+    'notes persist, reject stale edits and are deleted with their song',
     () async {
       sqfliteFfiInit();
       final root = await Directory.systemTemp.createTemp('notes_');
@@ -34,8 +34,7 @@ void main() {
         );
         expect((await store.notes()).single.songId, song.id);
         await store.deleteSong(song.id);
-        expect((await store.notes()).single.songId, isNull);
-        expect((await store.notes()).single.text, note.text);
+        expect(await store.notes(), isEmpty);
         await store.deleteNote(note.id);
         expect(await store.notes(), isEmpty);
         expect(await store.saveNote(note), false);

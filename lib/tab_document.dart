@@ -21,6 +21,19 @@ class TabDocument {
   int revision;
   String text;
   String annotations;
+  bool get hasContent =>
+      annotations.trim().isNotEmpty ||
+      text.split('\n').any((line) {
+        if (line.length >= 3 && line[1] == '|' && line.endsWith('|')) {
+          return line
+              .substring(2, line.length - 1)
+              .replaceAll('-', '')
+              .trim()
+              .isNotEmpty;
+        }
+        return line.trim().isNotEmpty;
+      });
+
   String encode() => jsonEncode({
     'formatVersion': 3,
     'id': id,

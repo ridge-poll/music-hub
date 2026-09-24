@@ -363,10 +363,6 @@ class _TunerScreenState extends State<TunerScreen> with WidgetsBindingObserver {
         child: ListView(
           padding: const EdgeInsets.all(24),
           children: [
-            const Text(
-              'Pluck one string. Let it ring.',
-              textAlign: TextAlign.center,
-            ),
             const SizedBox(height: 20),
             Center(
               child: ChoiceChip(
@@ -405,7 +401,9 @@ class _TunerScreenState extends State<TunerScreen> with WidgetsBindingObserver {
                                   selected == i ||
                                       (selected == null &&
                                           autoTarget == tuning[i])
-                                  ? const Color(0xFFD0E7DC)
+                                  ? Theme.of(
+                                      context,
+                                    ).colorScheme.primaryContainer
                                   : null,
                             ),
                             onPressed: () => setState(() {
@@ -430,7 +428,7 @@ class _TunerScreenState extends State<TunerScreen> with WidgetsBindingObserver {
               style: TextStyle(
                 fontSize: 80,
                 fontWeight: FontWeight.w600,
-                color: inTune ? const Color(0xFF276752) : null,
+                color: inTune ? Theme.of(context).colorScheme.primary : null,
               ),
             ),
             Text(
@@ -443,7 +441,10 @@ class _TunerScreenState extends State<TunerScreen> with WidgetsBindingObserver {
             const SizedBox(height: 24),
             CustomPaint(
               size: const Size(double.infinity, 60),
-              painter: _CentsPainter(cents),
+              painter: _CentsPainter(
+                cents,
+                Theme.of(context).colorScheme.primary,
+              ),
             ),
             const Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -497,7 +498,11 @@ class _TunerScreenState extends State<TunerScreen> with WidgetsBindingObserver {
                   height: 140,
                   child: CustomPaint(
                     size: const Size(double.infinity, 140),
-                    painter: _SpectrumPainter(frame?.spectrum ?? [], rate),
+                    painter: _SpectrumPainter(
+                      frame?.spectrum ?? [],
+                      rate,
+                      Theme.of(context).colorScheme.primary,
+                    ),
                   ),
                 ),
                 if (hz != null)
@@ -518,7 +523,8 @@ class _TunerScreenState extends State<TunerScreen> with WidgetsBindingObserver {
 }
 
 class _CentsPainter extends CustomPainter {
-  _CentsPainter(this.cents);
+  _CentsPainter(this.cents, this.color);
+  final Color color;
   final double? cents;
   @override
   void paint(Canvas canvas, Size size) {
@@ -534,17 +540,19 @@ class _CentsPainter extends CustomPainter {
       canvas.drawCircle(
         Offset((cents!.clamp(-200, 200) + 200) / 400 * size.width, 30),
         7,
-        Paint()..color = const Color(0xFF276752),
+        Paint()..color = color,
       );
     }
   }
 
   @override
-  bool shouldRepaint(_CentsPainter old) => old.cents != cents;
+  bool shouldRepaint(_CentsPainter old) =>
+      old.cents != cents || old.color != color;
 }
 
 class _SpectrumPainter extends CustomPainter {
-  _SpectrumPainter(this.bins, this.rate);
+  _SpectrumPainter(this.bins, this.rate, this.color);
+  final Color color;
   final List<double> bins;
   final int rate;
   @override
@@ -565,7 +573,7 @@ class _SpectrumPainter extends CustomPainter {
     canvas.drawPath(
       path,
       Paint()
-        ..color = const Color(0xFF276752)
+        ..color = color
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.5,
     );
@@ -573,5 +581,5 @@ class _SpectrumPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_SpectrumPainter old) =>
-      old.bins != bins || old.rate != rate;
+      old.bins != bins || old.rate != rate || old.color != color;
 }

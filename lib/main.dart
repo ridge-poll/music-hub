@@ -1,6 +1,4 @@
-import 'tab_screen.dart';
-import 'note.dart';
-import 'notes_screen.dart';
+import 'song_workspace.dart';
 import 'metronome_screen.dart';
 import 'delete_action.dart';
 import 'tuner_screen.dart';
@@ -69,37 +67,71 @@ class _BootstrapState extends State<Bootstrap> {
   );
 }
 
-class MusicHub extends StatelessWidget {
+class MusicHub extends StatefulWidget {
   const MusicHub({super.key, required this.store, required this.files});
   final MusicStore store;
   final AudioFiles files;
   @override
+  State<MusicHub> createState() => _MusicHubState();
+}
+
+class _MusicHubState extends State<MusicHub> {
+  bool dark = false;
+  @override
+  void initState() {
+    super.initState();
+    unawaited(loadTheme());
+  }
+
+  Future<void> loadTheme() async {
+    final value = await widget.store.setting('dark_mode');
+    if (mounted) setState(() => dark = value == 'true');
+  }
+
+  Future<void> setDark(bool value) async {
+    await widget.store.setSetting('dark_mode', '$value');
+    if (mounted) setState(() => dark = value);
+  }
+
+  ThemeData theme(Brightness brightness) => ThemeData(
+    useMaterial3: true,
+    colorScheme: ColorScheme.fromSeed(
+      seedColor: const Color(0xFF276752),
+      brightness: brightness,
+    ),
+    appBarTheme: const AppBarTheme(centerTitle: false),
+    inputDecorationTheme: const InputDecorationTheme(
+      border: OutlineInputBorder(),
+    ),
+  );
+  @override
   Widget build(BuildContext context) => MaterialApp(
     title: 'Music Hub',
     debugShowCheckedModeBanner: false,
-    theme: ThemeData(
-      useMaterial3: true,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFF276752),
-        brightness: Brightness.light,
-      ),
-      scaffoldBackgroundColor: const Color(0xFFF8F6F0),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: Color(0xFFF8F6F0),
-        centerTitle: false,
-      ),
-      inputDecorationTheme: const InputDecorationTheme(
-        border: OutlineInputBorder(),
-      ),
+    theme: theme(Brightness.light),
+    darkTheme: theme(Brightness.dark),
+    themeMode: dark ? ThemeMode.dark : ThemeMode.light,
+    home: LibraryScreen(
+      store: widget.store,
+      files: widget.files,
+      dark: dark,
+      onDarkChanged: setDark,
     ),
-    home: LibraryScreen(store: store, files: files),
   );
 }
 
 class LibraryScreen extends StatefulWidget {
-  const LibraryScreen({super.key, required this.store, required this.files});
+  const LibraryScreen({
+    super.key,
+    required this.store,
+    required this.files,
+    this.dark = false,
+    this.onDarkChanged,
+  });
   final MusicStore store;
   final AudioFiles files;
+  final bool dark;
+  final Future<void> Function(bool)? onDarkChanged;
   @override
   State<LibraryScreen> createState() => _LibraryScreenState();
 }
@@ -107,8 +139,7 @@ class LibraryScreen extends StatefulWidget {
 class _LibraryScreenState extends State<LibraryScreen> {
   late Future<List<SongDocument>> songs = widget.store.list();
   String query = '';
-  int page = 0;
-  int recordingsGeneration = 0;
+  int page = 0, recordingsGeneration = 0;
   void refresh() {
     if (mounted) {
       setState(() {
@@ -118,18 +149,40 @@ class _LibraryScreenState extends State<LibraryScreen> {
     }
   }
 
-  Future<void> open(SongDocument song) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) =>
-            EditorScreen(store: widget.store, song: song, files: widget.files),
-      ),
+  Future<void> open(SongDocument song, {String? component}) async {
+    await openSong(
+      context,
+      widget.store,
+      widget.files,
+      song,
+      component: component,
     );
     refresh();
   }
 
+  Future<void> create() async {
+    final type = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final label in ['Chords/Lyrics', 'Tab', 'Notes'])
+              ListTile(
+                title: Text(label),
+                onTap: () => Navigator.pop(context, label),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (type != null && mounted) await open(SongDocument(), component: type);
+  }
+
   Future<void> record() async {
-    final saved = await Navigator.of(context).push<bool>(
+    await Navigator.push(
+      context,
       MaterialPageRoute<bool>(
         builder: (_) => RecorderScreen(
           store: widget.store,
@@ -138,84 +191,47 @@ class _LibraryScreenState extends State<LibraryScreen> {
         ),
       ),
     );
-    if (saved == true && mounted) {
-      setState(() {
-        page = 1;
-      });
-    }
     refresh();
   }
 
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
-      title: const Text(
-        'Music Hub',
-        style: TextStyle(fontWeight: FontWeight.w700),
-      ),
+      title: Text(['Songs', 'Recordings', 'Tuner', 'More'][page]),
       actions: [
-        IconButton(
-          tooltip: 'Quick idea',
-          icon: const Icon(Icons.edit_note),
-          onPressed: () async {
-            await Navigator.push(
-              context,
-              MaterialPageRoute<void>(
-                builder: (_) =>
-                    NoteScreen(store: widget.store, note: MusicNote()),
-              ),
-            );
-            refresh();
-          },
-        ),
-        TextButton.icon(
-          onPressed: () => open(SongDocument()),
-          icon: const Icon(Icons.add),
-          label: const Text('New song'),
-        ),
-        const SizedBox(width: 8),
+        if (page == 0)
+          TextButton.icon(
+            onPressed: create,
+            icon: const Icon(Icons.add),
+            label: const Text('New'),
+          ),
       ],
     ),
-    floatingActionButton: FloatingActionButton.extended(
-      elevation: 0,
-      onPressed: record,
-      backgroundColor: const Color(0xFF276752),
-      foregroundColor: Colors.white,
-      icon: const Icon(Icons.mic_none_rounded),
-      label: const Text('Record'),
-    ),
+    floatingActionButton: page == 1
+        ? FloatingActionButton.extended(
+            onPressed: record,
+            icon: const Icon(Icons.mic_none),
+            label: const Text('Record'),
+          )
+        : null,
     bottomNavigationBar: NavigationBar(
       selectedIndex: page,
       onDestinationSelected: (index) {
-        if (index == 4) {
+        if (index == 2) {
           Navigator.push(
             context,
             MaterialPageRoute<void>(
-              builder: (_) => NotesScreen(store: widget.store),
+              builder: (_) => TunerScreen(store: widget.store),
             ),
           );
           return;
         }
-
-        if (index == 2 || index == 3) {
-          Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => index == 2
-                  ? TunerScreen(store: widget.store)
-                  : MetronomeScreen(store: widget.store),
-            ),
-          );
-          return;
-        }
-        setState(() {
-          page = index;
-        });
+        setState(() => page = index);
         refresh();
       },
       destinations: const [
         NavigationDestination(
           icon: Icon(Icons.library_music_outlined),
-          selectedIcon: Icon(Icons.library_music),
           label: 'Songs',
         ),
         NavigationDestination(
@@ -223,11 +239,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
           label: 'Recordings',
         ),
         NavigationDestination(icon: Icon(Icons.tune), label: 'Tuner'),
-        NavigationDestination(
-          icon: Icon(Icons.timer_outlined),
-          label: 'Metronome',
-        ),
-        NavigationDestination(icon: Icon(Icons.edit_note), label: 'Notes'),
+        NavigationDestination(icon: Icon(Icons.more_horiz), label: 'More'),
       ],
     ),
     body: SafeArea(
@@ -237,43 +249,50 @@ class _LibraryScreenState extends State<LibraryScreen> {
               store: widget.store,
               files: widget.files,
             )
-          : Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 88),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'YOUR MUSIC, WITHIN REACH',
-                    style: TextStyle(
-                      fontSize: 10,
-                      letterSpacing: 2,
-                      color: Color(0xFF597064),
+          : page == 3
+          ? ListView(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.timer_outlined),
+                  title: const Text('Metronome'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (_) => MetronomeScreen(store: widget.store),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Pick up where you left off.',
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  TextField(
-                    decoration: InputDecoration(
-                      hintText: 'Find a song or artist',
-                      prefixIcon: const Icon(Icons.search),
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
+                ),
+                ListTile(
+                  leading: const Icon(Icons.settings_outlined),
+                  title: const Text('Settings'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (_) => SettingsScreen(
+                        store: widget.store,
+                        onDarkChanged: widget.onDarkChanged,
                       ),
                     ),
-                    onChanged: (value) => setState(() {
-                      query = value.toLowerCase();
-                    }),
                   ),
-                  const SizedBox(height: 20),
+                ),
+              ],
+            )
+          : Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Column(
+                children: [
+                  TextField(
+                    decoration: const InputDecoration(
+                      hintText: 'Search songs',
+                      prefixIcon: Icon(Icons.search),
+                      isDense: true,
+                    ),
+                    onChanged: (value) =>
+                        setState(() => query = value.toLowerCase()),
+                  ),
+                  const SizedBox(height: 12),
                   Expanded(
                     child: FutureBuilder<List<SongDocument>>(
                       future: songs,
@@ -300,35 +319,17 @@ class _LibraryScreenState extends State<LibraryScreen> {
                             .toList();
                         if (items.isEmpty) {
                           return Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.notes_rounded,
-                                  size: 48,
-                                  color: Color(0xFF597064),
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  query.isEmpty
-                                      ? 'Every song starts somewhere.'
-                                      : 'No matching songs.',
-                                  style: Theme.of(context).textTheme.titleLarge,
-                                ),
-                                const SizedBox(height: 8),
-                                if (query.isEmpty)
-                                  const Text(
-                                    'Paste your lyrics, or record a little idea.',
-                                    textAlign: TextAlign.center,
-                                  ),
-                              ],
+                            child: Text(
+                              query.isEmpty
+                                  ? 'No songs yet'
+                                  : 'No matching songs',
                             ),
                           );
                         }
                         return ListView.separated(
                           itemCount: items.length,
                           separatorBuilder: (_, index) =>
-                              const SizedBox(height: 10),
+                              const SizedBox(height: 6),
                           itemBuilder: (context, index) {
                             final song = items[index];
                             return SwipeDelete(
@@ -339,54 +340,35 @@ class _LibraryScreenState extends State<LibraryScreen> {
                                   'Song',
                                   () => widget.store.deleteSong(song.id),
                                   detail:
-                                      'Recordings and notes will remain as unattached ideas.',
+                                      'Its documents will be deleted. Recordings remain in Recordings.',
                                 )) {
                                   refresh();
                                 }
                               },
                               child: Card(
-                                elevation: 0,
-                                color: Colors.white,
                                 margin: EdgeInsets.zero,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(18),
-                                ),
+                                elevation: 0,
                                 child: ListTile(
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 18,
-                                    vertical: 10,
-                                  ),
-                                  leading: Container(
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFEAF0E6),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: const Icon(
-                                      Icons.music_note_outlined,
-                                    ),
+                                  dense: true,
+                                  visualDensity: const VisualDensity(
+                                    vertical: -1,
                                   ),
                                   title: Text(
                                     song.title.isEmpty
                                         ? 'Untitled song'
                                         : song.title,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  subtitle: Padding(
-                                    padding: const EdgeInsets.only(top: 4),
-                                    child: Text(
-                                      song.artist.isNotEmpty
-                                          ? song.artist
-                                          : (song.text.trim().isEmpty
-                                                ? 'Ready for an idea'
-                                                : song.text.split('\n').first),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
+                                  subtitle: Text(
+                                    song.components.join(' · '),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  trailing: const Icon(Icons.chevron_right),
+                                  trailing: const Icon(
+                                    Icons.chevron_right,
+                                    size: 20,
+                                  ),
                                   onTap: () => open(song),
                                 ),
                               ),
@@ -399,6 +381,51 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 ],
               ),
             ),
+    ),
+  );
+}
+
+class SettingsScreen extends StatefulWidget {
+  const SettingsScreen({super.key, required this.store, this.onDarkChanged});
+  final MusicStore store;
+  final Future<void> Function(bool)? onDarkChanged;
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  bool? dark;
+  String? error;
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('Settings')),
+    body: Column(
+      children: [
+        SwitchListTile(
+          title: const Text('Dark Mode'),
+          value: dark ?? Theme.of(context).brightness == Brightness.dark,
+          onChanged: (value) async {
+            try {
+              if (widget.onDarkChanged != null) {
+                await widget.onDarkChanged!(value);
+              } else {
+                await widget.store.setSetting('dark_mode', '$value');
+              }
+              if (mounted) {
+                setState(() {
+                  dark = value;
+                  error = null;
+                });
+              }
+            } catch (_) {
+              if (mounted) {
+                setState(() => error = 'Could not save setting. Try again.');
+              }
+            }
+          },
+        ),
+        if (error != null) Text(error!),
+      ],
     ),
   );
 }
@@ -430,6 +457,7 @@ class _EditorScreenState extends State<EditorScreen>
   final UndoHistoryController undo = UndoHistoryController();
   Timer? debounce;
   Future<bool>? pendingSave;
+  bool leaving = false, exiting = false;
   bool dirty = false;
   bool conflicted = false;
   int editGeneration = 0;
@@ -481,6 +509,11 @@ class _EditorScreenState extends State<EditorScreen>
     song.title = title.text.trim();
     song.artist = artist.text.trim();
     song.text = sheet.text;
+    if (song.revision == 0 && song.isBlank) {
+      dirty = false;
+      if (mounted) setState(() => status = "Not saved yet");
+      return true;
+    }
     final snapshot = SongDocument.decode(song.encode(), song.revision);
     final operation = _persist(snapshot, generation);
     pendingSave = operation;
@@ -528,11 +561,16 @@ class _EditorScreenState extends State<EditorScreen>
     }
   }
 
-  Future<void> leave() async {
-    final ok = await save();
-    if (ok && mounted) {
-      Navigator.of(context).pop();
+  Future<void> leave({bool workspace = false}) async {
+    if (exiting) return;
+    exiting = true;
+    if (!await save() || !mounted) {
+      exiting = false;
+      return;
     }
+    setState(() => leaving = true);
+    await WidgetsBinding.instance.endOfFrame;
+    if (mounted) Navigator.of(context).pop(workspace ? 'workspace' : null);
   }
 
   Future<void> perform() async {
@@ -560,31 +598,6 @@ class _EditorScreenState extends State<EditorScreen>
     super.dispose();
   }
 
-  Future<void> openTab() async {
-    if (!await save() || !mounted) return;
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => TabScreen(store: widget.store, song: song),
-      ),
-    );
-  }
-
-  Future<void> recordForSong() async {
-    FocusScope.of(context).unfocus();
-    if (!await save() || !mounted) {
-      return;
-    }
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => SongRecordingsScreen(
-          store: widget.store,
-          files: widget.files,
-          song: song,
-        ),
-      ),
-    );
-  }
-
   Future<void> deleteSong() async {
     debounce?.cancel();
     final pending = pendingSave;
@@ -594,7 +607,8 @@ class _EditorScreenState extends State<EditorScreen>
           context,
           'Song',
           () => widget.store.deleteSong(song.id),
-          detail: 'Recordings and notes will remain as unattached ideas.',
+          detail:
+              'Its documents will be deleted. Recordings remain in Recordings.',
         ) &&
         mounted) {
       setState(() {
@@ -638,7 +652,7 @@ class _EditorScreenState extends State<EditorScreen>
 
   @override
   Widget build(BuildContext context) => PopScope(
-    canPop: !dirty && !saving,
+    canPop: leaving || (!dirty && !saving),
     onPopInvokedWithResult: (didPop, result) {
       if (!didPop) {
         unawaited(leave());
@@ -651,8 +665,13 @@ class _EditorScreenState extends State<EditorScreen>
           icon: const Icon(Icons.arrow_back),
           onPressed: leave,
         ),
-        title: const Text('Song'),
+        title: const Text('Chords/Lyrics'),
         actions: [
+          IconButton(
+            tooltip: 'Song workspace',
+            onPressed: () => leave(workspace: true),
+            icon: const Icon(Icons.folder_open),
+          ),
           TextButton(
             onPressed: saving ? null : save,
             child: const Text('Save'),
@@ -742,7 +761,7 @@ class _EditorScreenState extends State<EditorScreen>
             const Divider(height: 1),
             Expanded(
               child: ColoredBox(
-                color: Colors.white,
+                color: Theme.of(context).colorScheme.surface,
                 child: PlainSheetEditor(
                   controller: sheet,
                   undoController: undo,
@@ -756,44 +775,6 @@ class _EditorScreenState extends State<EditorScreen>
                 child: TextButton(
                   onPressed: () => FocusScope.of(context).unfocus(),
                   child: const Text('Done'),
-                ),
-              )
-            else
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                child: Wrap(
-                  alignment: WrapAlignment.spaceBetween,
-                  spacing: 8,
-                  children: [
-                    TextButton.icon(
-                      onPressed: recordForSong,
-                      icon: const Icon(Icons.graphic_eq),
-                      label: const Text('Recordings'),
-                    ),
-                    TextButton(onPressed: openTab, child: const Text('Tab')),
-                    TextButton(
-                      onPressed: () async {
-                        if (!await save() || !mounted) return;
-                        if (!context.mounted) return;
-                        await Navigator.push(
-                          context,
-                          MaterialPageRoute<void>(
-                            builder: (_) =>
-                                NotesScreen(store: widget.store, song: song),
-                          ),
-                        );
-                      },
-                      child: const Text('Notes'),
-                    ),
-                    FilledButton.icon(
-                      onPressed: perform,
-                      icon: const Icon(Icons.play_arrow),
-                      label: const Text('Play'),
-                    ),
-                  ],
                 ),
               ),
             if (MediaQuery.viewInsetsOf(context).bottom == 0)

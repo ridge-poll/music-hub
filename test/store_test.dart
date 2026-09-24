@@ -101,6 +101,8 @@ void main() {
       await store.db.execute(
         "INSERT INTO document_versions VALUES ('old history')",
       );
+      await store.db.execute('ALTER TABLE songs DROP COLUMN last_edited');
+      await store.db.execute('ALTER TABLE songs DROP COLUMN edited_revision');
       await store.db.setVersion(2);
       await store.close();
       store = await MusicStore.open(
@@ -114,7 +116,7 @@ void main() {
         ),
         isEmpty,
       );
-      expect(await store.db.getVersion(), 3);
+      expect(await store.db.getVersion(), 4);
     },
   );
 

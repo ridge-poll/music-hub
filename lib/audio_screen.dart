@@ -10,10 +10,7 @@ import 'document.dart';
 import 'recording.dart';
 import 'store.dart';
 import 'practice_loop.dart';
-import 'note.dart';
-import 'notes_screen.dart';
-import 'main.dart' show EditorScreen;
-import 'tab_screen.dart';
+import 'playback_timeline.dart';
 
 class SongRecordingsScreen extends StatefulWidget {
   const SongRecordingsScreen({
@@ -31,12 +28,66 @@ class SongRecordingsScreen extends StatefulWidget {
 
 class _SongRecordingsScreenState extends State<SongRecordingsScreen> {
   int generation = 0;
+  Future<void> addExisting() async {
+    try {
+      final items = (await widget.store.recordings())
+          .where((r) => r.songId == null)
+          .toList();
+      if (!mounted) return;
+      final id = await showModalBottomSheet<String>(
+        context: context,
+        showDragHandle: true,
+        builder: (context) => SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              const ListTile(title: Text('Add recording')),
+              if (items.isEmpty)
+                const ListTile(title: Text('No unattached recordings')),
+              for (final item in items)
+                ListTile(
+                  title: Text(item.title),
+                  subtitle: Text(
+                    audioTime(Duration(milliseconds: item.durationMs)),
+                  ),
+                  onTap: () => Navigator.pop(context, item.id),
+                ),
+            ],
+          ),
+        ),
+      );
+      if (id == null) return;
+      await widget.store.attachRecording(id, widget.song.id);
+      if (mounted) setState(() => generation++);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not add recording. Please retry.'),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
       title: Text(
         widget.song.title.isEmpty ? 'Song recordings' : widget.song.title,
       ),
+      actions: [
+        IconButton(
+          tooltip: 'Song workspace',
+          onPressed: () => Navigator.pop(context, 'workspace'),
+          icon: const Icon(Icons.folder_open),
+        ),
+        IconButton(
+          tooltip: 'Add recording',
+          onPressed: addExisting,
+          icon: const Icon(Icons.add),
+        ),
+      ],
     ),
     body: RecordingsPane(
       key: ValueKey(generation),
@@ -63,7 +114,7 @@ class _SongRecordingsScreenState extends State<SongRecordingsScreen> {
         }
       },
       icon: const Icon(Icons.mic_none),
-      label: const Text('Record for this song'),
+      label: const Text('Record'),
     ),
   );
 }
@@ -119,18 +170,9 @@ class _RecordingsPaneState extends State<RecordingsPane> {
       return ListView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 110),
         children: [
-          Text(
-            'Little ideas. Keep them.',
-            style: Theme.of(
-              context,
-            ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 8),
-          const Text('Your recordings stay on this device.'),
-          const SizedBox(height: 24),
           for (final draft in drafts)
             Card(
-              color: const Color(0xFFFFEBCD),
+              color: Theme.of(context).colorScheme.secondaryContainer,
               elevation: 0,
               child: ListTile(
                 leading: const Icon(Icons.restore),
@@ -152,22 +194,8 @@ class _RecordingsPaneState extends State<RecordingsPane> {
             ),
           if (takes.isEmpty && drafts.isEmpty)
             const Padding(
-              padding: EdgeInsets.only(top: 70),
-              child: Column(
-                children: [
-                  Icon(Icons.graphic_eq, size: 56, color: Color(0xFF597064)),
-                  SizedBox(height: 16),
-                  Text(
-                    'A riff, a melody, a first take.',
-                    style: TextStyle(fontSize: 19),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Tap Record. Organize it later.',
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
+              padding: EdgeInsets.all(32),
+              child: Center(child: Text('No recordings yet')),
             ),
           for (final take in takes)
             Padding(
@@ -185,7 +213,7 @@ class _RecordingsPaneState extends State<RecordingsPane> {
                 },
                 child: Card(
                   elevation: 0,
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.surfaceContainerLow,
                   margin: EdgeInsets.zero,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(18),
@@ -193,12 +221,12 @@ class _RecordingsPaneState extends State<RecordingsPane> {
                   child: ListTile(
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16,
-                      vertical: 8,
+                      vertical: 0,
                     ),
                     leading: const CircleAvatar(child: Icon(Icons.play_arrow)),
                     title: Text(take.title),
                     subtitle: Text(
-                      '${audioTime(Duration(milliseconds: take.durationMs))} · ${take.songTitle ?? 'Unattached idea'}',
+                      '${audioTime(Duration(milliseconds: take.durationMs))} · ${take.songTitle ?? 'Recording'}',
                     ),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () async {
@@ -590,7 +618,7 @@ class _RecorderScreenState extends State<RecorderScreen>
     },
     child: Scaffold(
       appBar: AppBar(
-        title: const Text('Capture an idea'),
+        title: const Text('Record'),
         leading: IconButton(
           tooltip: 'Keep draft and return',
           onPressed: busy ? null : leave,
@@ -602,23 +630,11 @@ class _RecorderScreenState extends State<RecorderScreen>
           padding: const EdgeInsets.all(24),
           children: [
             const SizedBox(height: 16),
-            Text(
-              capturing
-                  ? (paused ? 'Paused' : 'Listening…')
-                  : draft != null
-                  ? 'Keep this take.'
-                  : 'Make a little music.',
-              style: Theme.of(context).textTheme.headlineLarge,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              capturing
-                  ? (paused
-                        ? 'Tap Resume when you are ready.'
-                        : 'Recording on this device. Take your time.')
-                  : 'A riff, a melody, whatever comes next.',
-            ),
-            const SizedBox(height: 36),
+            if (capturing)
+              Text(
+                paused ? 'Paused' : 'Recording',
+                textAlign: TextAlign.center,
+              ),
             Center(
               child: Text(
                 audioTime(elapsed),
@@ -691,21 +707,11 @@ class _RecorderScreenState extends State<RecorderScreen>
                     label: const Text('Save recording'),
                   ),
                   TextButton(
-                    onPressed: leave,
-                    child: const Text('Keep draft for later'),
-                  ),
-                  TextButton(
                     onPressed: discard,
                     child: const Text('Discard take'),
                   ),
                 ],
               ),
-            const SizedBox(height: 28),
-            const Text(
-              'Recording pauses for audio interruptions and stops when the app goes into the background.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12),
-            ),
           ],
         ),
       ),
@@ -734,14 +740,12 @@ class _PlaybackScreenState extends State<PlaybackScreen>
   late final player = widget.player ?? AudioPlayer();
   Duration fullDuration = Duration.zero;
   PracticeLoop? activeRegion;
-  double regionA = 0, regionB = 0;
   bool changingLoop = false, foreground = true;
   int get absolutePosition =>
       activeRegion?.toAbsolute(player.position.inMilliseconds) ??
       player.position.inMilliseconds;
 
   bool ready = false;
-  bool loop = false;
   String? error;
   late String? attachedTitle = widget.recording.songTitle;
   late String? attachedId = widget.recording.songId;
@@ -774,7 +778,6 @@ class _PlaybackScreenState extends State<PlaybackScreen>
           fullDuration =
               player.duration ??
               Duration(milliseconds: widget.recording.durationMs);
-          regionB = fullDuration.inMilliseconds.toDouble();
           ready = true;
           error = null;
         });
@@ -832,7 +835,6 @@ class _PlaybackScreenState extends State<PlaybackScreen>
       if (mounted) {
         setState(() {
           activeRegion = region;
-          loop = region != null;
           error = null;
         });
       }
@@ -845,57 +847,12 @@ class _PlaybackScreenState extends State<PlaybackScreen>
       if (mounted) {
         setState(() {
           activeRegion = null;
-          loop = false;
           error = 'Could not set this loop. Playback is paused; try again.';
         });
       }
     } finally {
       if (mounted) setState(() => changingLoop = false);
     }
-  }
-
-  Future<void> openWorkspace({bool tab = false}) async {
-    await act(player.pause);
-    try {
-      final songs = await widget.store.list();
-      final song = songs.where((s) => s.id == attachedId).firstOrNull;
-      if (song == null || !mounted) return;
-      await Navigator.push(
-        context,
-        MaterialPageRoute<void>(
-          builder: (_) => tab
-              ? TabScreen(store: widget.store, song: song)
-              : EditorScreen(
-                  store: widget.store,
-                  song: song,
-                  files: widget.files,
-                ),
-        ),
-      );
-    } catch (_) {
-      if (mounted) {
-        setState(() => error = 'Could not open the song. Try again.');
-      }
-    }
-  }
-
-  Future<void> jotNote() async {
-    await act(player.pause);
-    if (!mounted) return;
-    await Navigator.push(
-      context,
-      MaterialPageRoute<void>(
-        builder: (_) => NoteScreen(
-          store: widget.store,
-          note: MusicNote(
-            title: widget.recording.title,
-            text: 'Recording: ${widget.recording.title}\n\n',
-            songId: attachedId,
-            songTitle: attachedTitle,
-          ),
-        ),
-      ),
-    );
   }
 
   Future<void> attach() async {
@@ -973,36 +930,23 @@ class _PlaybackScreenState extends State<PlaybackScreen>
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Listen back')),
+    appBar: AppBar(title: const Text('Recording')),
     body: SafeArea(
       child: ListView(
         padding: const EdgeInsets.all(24),
         children: [
-          const SizedBox(height: 20),
-          Container(
-            height: 96,
-            decoration: BoxDecoration(
-              color: const Color(0xFFEAF0E6),
-              borderRadius: BorderRadius.circular(28),
-            ),
-            child: const Icon(
-              Icons.graphic_eq,
-              size: 48,
-              color: Color(0xFF276752),
-            ),
-          ),
-          const SizedBox(height: 28),
           Text(
             widget.recording.title,
-            style: Theme.of(context).textTheme.headlineMedium,
+            style: Theme.of(context).textTheme.titleLarge,
           ),
-          const SizedBox(height: 8),
-          Text(
-            attachedTitle == null
-                ? 'Unattached idea'
-                : (attachedTitle!.isEmpty ? 'Untitled song' : attachedTitle!),
-          ),
-          const SizedBox(height: 28),
+          if (attachedTitle != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                attachedTitle!.isEmpty ? 'Untitled song' : attachedTitle!,
+              ),
+            ),
+          const SizedBox(height: 24),
           if (error != null)
             Text(
               error!,
@@ -1017,121 +961,31 @@ class _PlaybackScreenState extends State<PlaybackScreen>
               stream: player.positionStream,
               initialData: player.position,
               builder: (context, snapshot) {
-                final duration = fullDuration;
-                final relative = snapshot.data ?? Duration.zero;
-                final current = Duration(
-                  milliseconds:
-                      activeRegion?.toAbsolute(relative.inMilliseconds) ??
-                      relative.inMilliseconds,
-                );
-                final max = duration.inMilliseconds.toDouble();
-                return Column(
-                  children: [
-                    Slider(
-                      value: current.inMilliseconds.toDouble().clamp(
-                        0,
-                        max > 0 ? max : 1,
+                final relative =
+                    (snapshot.data ?? Duration.zero).inMilliseconds;
+                return PlaybackTimeline(
+                  durationMs: fullDuration.inMilliseconds,
+                  positionMs: activeRegion?.toAbsolute(relative) ?? relative,
+                  region: activeRegion,
+                  enabled: !changingLoop,
+                  onSeek: (value) => unawaited(
+                    act(
+                      () => player.seek(
+                        Duration(
+                          milliseconds:
+                              activeRegion?.toRelative(value) ?? value,
+                        ),
                       ),
-                      max: max > 0 ? max : 1,
-                      onChanged: max > 0 && !changingLoop
-                          ? (value) => unawaited(
-                              act(
-                                () => player.seek(
-                                  Duration(
-                                    milliseconds:
-                                        activeRegion?.toRelative(
-                                          value.round(),
-                                        ) ??
-                                        value.round(),
-                                  ),
-                                ),
-                              ),
-                            )
-                          : null,
                     ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(audioTime(current)),
-                        Text(audioTime(duration)),
-                      ],
-                    ),
-                  ],
+                  ),
+                  onRegion: (region) => unawaited(setRegion(region)),
                 );
               },
             ),
-            const SizedBox(height: 16),
-            if (fullDuration.inMilliseconds >= 200) ...[
-              const Text('A/B practice loop'),
-              RangeSlider(
-                key: const Key('loop-range'),
-                values: RangeValues(regionA, regionB),
-                min: 0,
-                max: fullDuration.inMilliseconds.toDouble(),
-                labels: RangeLabels(
-                  preciseTime(regionA.round()),
-                  preciseTime(regionB.round()),
-                ),
-                onChanged: changingLoop
-                    ? null
-                    : (range) => setState(() {
-                        regionA = range.start;
-                        regionB = range.end;
-                      }),
-              ),
-              Text(
-                'A ${preciseTime(regionA.round())}   ·   B ${preciseTime(regionB.round())}',
-                textAlign: TextAlign.center,
-              ),
-              Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 8,
-                children: [
-                  TextButton(
-                    onPressed: changingLoop
-                        ? null
-                        : () => setState(() {
-                            regionA = absolutePosition.toDouble().clamp(
-                              0,
-                              regionB,
-                            );
-                          }),
-                    child: const Text('Set A here'),
-                  ),
-                  TextButton(
-                    onPressed: changingLoop
-                        ? null
-                        : () => setState(() {
-                            regionB = absolutePosition.toDouble().clamp(
-                              regionA,
-                              fullDuration.inMilliseconds.toDouble(),
-                            );
-                          }),
-                    child: const Text('Set B here'),
-                  ),
-                  FilledButton.tonal(
-                    onPressed: changingLoop || regionB - regionA < 200
-                        ? null
-                        : () => setRegion(
-                            PracticeLoop(regionA.round(), regionB.round()),
-                          ),
-                    child: const Text('Loop A–B'),
-                  ),
-                  if (activeRegion != null)
-                    TextButton(
-                      onPressed: changingLoop ? null : () => setRegion(null),
-                      child: const Text('Clear A/B'),
-                    ),
-                ],
-              ),
-              if (activeRegion != null)
-                Text(
-                  'Looping ${preciseTime(activeRegion!.startMs)} – ${preciseTime(activeRegion!.endMs)}',
-                  textAlign: TextAlign.center,
-                ),
-            ],
+            const SizedBox(height: 20),
             StreamBuilder<PlayerState>(
               stream: player.playerStateStream,
+              initialData: PlayerState(player.playing, player.processingState),
               builder: (context, snapshot) {
                 final playing =
                     (snapshot.data?.playing ?? false) &&
@@ -1156,69 +1010,24 @@ class _PlaybackScreenState extends State<PlaybackScreen>
                             ),
                       icon: const Icon(Icons.replay_10),
                     ),
-                    const SizedBox(width: 20),
-                    FilledButton(
+                    const SizedBox(width: 24),
+                    IconButton.filled(
+                      tooltip: playing ? 'Pause' : 'Play',
                       onPressed: changingLoop ? null : playOrPause,
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.all(20),
-                        shape: const CircleBorder(),
-                      ),
-                      child: Icon(
-                        playing ? Icons.pause : Icons.play_arrow,
-                        size: 36,
-                      ),
+                      iconSize: 36,
+                      icon: Icon(playing ? Icons.pause : Icons.play_arrow),
                     ),
-                    const SizedBox(width: 20),
-                    IconButton(
-                      tooltip: 'Loop recording',
-                      isSelected: loop && activeRegion == null,
-                      onPressed: changingLoop || activeRegion != null
-                          ? null
-                          : () => unawaited(
-                              act(() async {
-                                await player.setLoopMode(
-                                  loop ? LoopMode.off : LoopMode.one,
-                                );
-                                if (mounted) {
-                                  setState(() {
-                                    loop = !loop;
-                                  });
-                                }
-                              }),
-                            ),
-                      icon: const Icon(Icons.repeat),
-                    ),
+                    const SizedBox(width: 72),
                   ],
                 );
               },
             ),
           ],
-          const SizedBox(height: 32),
-          Wrap(
-            alignment: WrapAlignment.center,
-            spacing: 12,
-            children: [
-              TextButton.icon(
-                onPressed: jotNote,
-                icon: const Icon(Icons.edit_note),
-                label: const Text('Jot a note'),
-              ),
-              if (attachedId != null) ...[
-                TextButton(
-                  onPressed: openWorkspace,
-                  child: const Text('Open song'),
-                ),
-                TextButton(
-                  onPressed: () => openWorkspace(tab: true),
-                  child: const Text('Work on tab'),
-                ),
-              ],
-            ],
-          ),
-          OutlinedButton.icon(
+          const SizedBox(height: 24),
+          TextButton.icon(
             onPressed: attach,
-            icon: const Icon(Icons.link),
-            label: const Text('Attach to a song'),
+            icon: const Icon(Icons.link, size: 18),
+            label: Text(attachedId == null ? 'Attach to Song' : 'Change Song'),
           ),
           TextButton(
             onPressed: () async {
@@ -1227,19 +1036,13 @@ class _PlaybackScreenState extends State<PlaybackScreen>
                     await widget.store.deleteRecording(widget.recording.id);
                   }) &&
                   context.mounted) {
-                Navigator.of(context).pop();
+                Navigator.pop(context);
               }
             },
-            child: const Text(
+            child: Text(
               'Delete Recording',
-              style: TextStyle(color: Colors.red),
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'Original audio · saved locally',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12),
           ),
         ],
       ),

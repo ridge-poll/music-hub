@@ -75,7 +75,7 @@ void main() {
       await tester.tap(find.text('Tab'));
       await tester.pump();
       await flush();
-      expect(find.byType(TextField), findsOneWidget);
+      expect(find.byType(TextField), findsNWidgets(2));
       expect(tester.widget<TextField>(field).controller!.text, blankTabBlock);
       final control = tester.widget<TextField>(field).controller!;
       await tester.tap(field);

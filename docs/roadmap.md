@@ -2,7 +2,7 @@
 
 ## Current stage: Stage 7 — musician workflow
 
-Status: Stage 6 metronome is user-validated on iPhone. Stage 5 fixed-width overwrite refinement, Stage 6 microphone BPM estimation, and Stage 7 workflow features are implemented; 93 automated checks and static analysis pass. Their physical-device acceptance is next. Stage 8 remains import/export and V1 cleanup/stabilization.
+Status: **Stage 7 workflow simplification (0.7.1) is implemented and awaiting iPhone testing.** Songs are now the home and organizational object. Stage 5 fixed-width tabs and Stage 6 on-device BPM estimation remain in place. No Stage 8 features are being added until the user tests this revision and decides the next scope.
 
 ## Stage 1 — complete: chords → local save → reopen → performance
 
@@ -13,7 +13,7 @@ Status: Stage 6 metronome is user-validated on iPhone. Stage 5 fixed-width overw
 
 ## Stage 2 — complete and iPhone-validated: record → save → playback
 
-One-tap recording, live input level, pause/resume/stop, durable unfinished-take drafts, immutable content-addressed audio, playback/seek/whole-take repeat and song attachment rows. The user reports the phone workflow works well. Unfinished audio drafts remain as protection for interrupted captures; these are not saved song versions.
+One-tap recording, live input level, pause/resume/stop, durable unfinished-take drafts, immutable content-addressed audio, playback/seek and song attachment rows. The user reports the phone workflow works well. Unfinished audio drafts remain as protection for interrupted captures; these are not saved song versions.
 
 ## Stage 3 — iPhone-tested; tuner refinements implemented
 
@@ -47,16 +47,22 @@ The fretboard, fret-first keypad, active-string keypad and thumbwheel prototypes
 - Offers a candidate tempo and valid half/double choices. Nothing changes until **Use … BPM** is tapped; applying does not start playback. Weak/nonperiodic input shows no estimate. Audio is temporary in memory and is not saved.
 - Capture stops on cancellation, exit, background or interruption. A capture timeout prevents indefinite listening. This is a simple pulse estimator: mixed music, syncopation and changing tempo can yield ambiguous/wrong estimates. Real music/device validation remains pending.
 
-## Stage 7 — current: capture → develop → practice
+## Stage 7 — current: Song-first musician’s notepad
 
-- Song workspace links chords/lyrics, Tab, Notes and Recordings. Chord/tab/note content saves independently.
-- **Quick idea** in the main toolbar opens a plain note immediately, without creating a song. The existing one-tap Record action captures unattached audio. **Notes** navigation collects saved notes/ideas; they can later be attached to or detached from songs.
-- Free-form note title/body, local autosave, explicit Save, save-before-leaving, stale-write rejection and confirmed swipe/detail deletion. Attachments use separate ordered rows. Deleting a song leaves notes and recordings available as unattached ideas.
-- Recording playback adds **Jot a note**, **Open song** and **Work on tab** (song actions appear when attached). Opening another workspace pauses playback.
-- **A/B practice loop**: range handles or Set A/Set B at the playhead, explicit Loop A–B and Clear A/B. Minimum region 200 ms. Native clipping plus native repeat, without modifying the immutable original. Seek/time labels stay in original recording coordinates. Range selection is session-local; it does not create a derived audio asset.
-- Whole-recording repeat remains available outside A/B mode. Backgrounding pauses playback. Compact playback artwork leaves room for practice controls.
+Completed in this revision:
 
-## Stage 8 — next: import/export and V1 cleanup/stabilization
+- **Songs is home.** Compact horizontal cards show title and populated components, sorted by most recent actual edit. Song metadata stores `lastEdited`; the persisted logical edit counter provides stable ordering without trusting wall-clock time. Opening a Song, viewing documents, saving identical content or converting a stored tab format does not mark it edited.
+- A Song has one chords/lyrics document, one ASCII tab, one notes document and zero or more recordings. Any subset is valid. A single populated component opens directly; multiple components open a minimal workspace. The folder button in a direct editor opens the workspace to add other components. Performance mode remains one tap from a populated chord sheet or workspace.
+- **+ New → Chords/Lyrics / Tab / Notes.** Editors begin in memory. No Song is saved for an untouched visit, whitespace-only new text, or default blank tab blocks. A meaningful document or title edit creates the Song and its first document atomically. Autosave and explicit Save remain.
+- Existing standalone notes migrate to notes-only Songs, keeping their titles and exact bodies. Multiple notes already attached to a Song are combined into its one notes document with every old title/body retained. Migration does not invent edit timestamps. Song deletion now deletes its notes along with chords/tabs; recordings remain independently available. Confirmed swipe/detail deletion remains.
+- Bottom navigation: **Songs | Recordings | Tuner | More**. More contains Metronome and Settings. Dark Mode is saved locally. Notes is no longer a separate destination. Promotional/dashboard prompts and recording-to-note/tab shortcuts are removed.
+- Independent recording remains under Recordings. From a Song’s Recordings screen, record a new take or use **+** to add an existing unattached recording. A Song supports multiple takes. Playback retains play/pause, seek, back ten seconds, attachment and confirmed deletion.
+- One playback timeline shows played/unplayed portions, the playhead and two thin region boundaries. Full-width boundaries mean normal playback. Dragging either boundary inward immediately selects a repeating practice region; returning both to the edges restores normal playback. Native clip/repeat, minimum 200 ms, session-local bounds and immutable original audio remain. There are no Set A/Set B, Apply Loop, Clear Loop or separate whole-take-repeat controls.
+- Interrupted audio capture still keeps an unfinished take for recovery. No document history has returned.
+
+Pending: actual iPhone acceptance of the revised home/creation workflow, note migration, Dark Mode, and boundary-handle interaction/native looping. Automated checks are recorded in [verification](verification.md).
+
+## Stage 8 — deferred until iPhone feedback: import/export and V1 cleanup/stabilization
 
 After Stage 7 iPhone acceptance, prioritize full-fidelity native backup/restore, agreed interchange scope (ChordPro import/export, Guitar Pro import, MusicXML import/view), and V1 usability/reliability cleanup. Define faithful behavior for free-form tabs before promising interchange equivalence. Include migration/backup round trips, error handling, accessibility and Android/device audio testing.
 
@@ -64,10 +70,11 @@ Remaining original V1 items such as trim/derived-asset waveform, transpose/capo,
 
 ## Next acceptance
 
-1. Upgrade and verify existing tabs and annotations, overwrite/backspace/space/Delete behavior, no wrapping, added blocks and local reopen on iPhone.
-2. Try BPM listening with clear beats, ordinary songs, silence and noisy/ambiguous passages; check explicit application and microphone release.
-3. Capture an unattached note/audio idea, attach it to a song, work between song surfaces, and practice a short A/B loop. Check loop bounds, repeated audio, navigation, backgrounding and deletion.
-4. Proceed to Stage 8 after feedback on these workflows.
+1. Upgrade over the current app without uninstalling. Check existing chords, tabs, notes and recordings; standalone notes should now appear as Songs, and attached note text should be consolidated without loss.
+2. Try all three + New paths, immediately Back, whitespace-only entry, and blank Tab Blocks. None should create an empty Song. Enter real content, save/reopen, and verify direct opening for a single component versus the overview for multiple components.
+3. Confirm visiting Songs does not reorder them. Edit title/chords/tab/notes or attach a recording and verify that Song moves to the top.
+4. Try Song-side recording attachment, multiple takes, play/seek/back ten seconds, and both timeline handles while paused/playing. Verify repeating bounds, full-range normal playback, and background/interruption behavior.
+5. Check More → Metronome and Settings → Dark Mode, including relaunch. Give feedback before Stage 8 planning resumes.
 
 ## Later DSP tools — room-acoustics profiling (idea only)
 

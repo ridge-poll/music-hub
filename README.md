@@ -1,6 +1,6 @@
 # Music Hub
 
-A local-first music workspace for iOS and Android, with iPhone as the lead test device. Version 0.7 adds fixed-width overwrite tabs, microphone BPM estimates, standalone/song notes and A/B recording practice.
+A local-first music workspace for iOS and Android, with iPhone as the lead test device. Version 0.7.1 centers the app on Songs: a musician’s notepad with local recording, tuner and metronome tools.
 
 ## Song sheets
 
@@ -26,24 +26,27 @@ Open a song and tap **Tab**. Each string has 40 fixed character positions, fitte
 
 Tabs retain local autosave and song/arrangement ownership. Older long ASCII rows continue into additional blocks; free-form text outside six-string blocks remains editable under Saved annotations. There is no musical validation or history system. See [the roadmap](docs/roadmap.md).
 
-## Notes and quick ideas
+## Songs and creation
 
-Tap **Quick idea** (the writing icon in the main toolbar) to jot a note without creating a song, or use **Record** for an audio idea. Notes has a plain title/body, autosave and optional song attachment. The song screen links chords/lyrics, Tab, Notes and Recordings. Notes and recordings remain unattached if their song is deleted.
+**Songs** is home. Compact cards sort by actual edits, not visits. Each Song can have chords/lyrics, an ASCII tab, one notes document and multiple recordings, in any combination. A single populated component opens directly; otherwise the Song workspace offers its documents and recordings. Use the folder button to reach the workspace from a direct editor.
+
+**+ New** starts Chords/Lyrics, Tab or Notes. An untouched editor or blank tab template saves nothing. Meaningful text or title edits create the Song locally. Existing standalone notes become Songs on upgrade; multiple attached notes combine into the Song’s single notes document with their text retained.
+
+Navigation is **Songs | Recordings | Tuner | More**. More contains Metronome and Settings, including a persistent Dark Mode switch.
 
 ## Metronome and BPM listening
 
-Tap **Metronome** for 40–240 BPM, tap tempo, time signature and per-beat accents/muting. Settings persist. BPM counts the displayed note unit; changes restart the bar. Audio uses sample-positioned native playback and stops on background/exit/interruption.
+Open **More → Metronome** for 40–240 BPM, tap tempo, time signature and per-beat accents/muting. Settings persist. BPM counts the displayed note unit; changes restart the bar. Audio uses sample-positioned native playback and stops on background/exit/interruption.
 
 **Listen for BPM** pauses the clicks and listens for 12 seconds. On-device analysis offers an estimated pulse, including half/double alternatives; **Use … BPM** explicitly applies your choice. Silence/weak rhythm may give no result, and complex music may be ambiguous. No microphone audio is saved or uploaded. Actual music and microphone behavior still need iPhone acceptance.
 
 ## Recordings
 
-- Tap **Record** from the main screen to start a take; microphone permission is requested when needed.
-- Live input level, elapsed time, pause/resume, stop and name the take.
-- Save locally, then listen with play/pause, seek, replay ten seconds and whole-recording repeat.
-- Select an A/B region with range handles or Set A/Set B, then tap Loop A–B and Play. Clear A/B returns to the full recording. Native clipping leaves original audio untouched.
-- From playback, jot a note or open the attached song/tab.
-- Keep an unattached idea, or attach it to a song from the player. Songs have their own Recordings screen.
+- Open **Recordings → Record** to start an independent take; microphone permission is requested when needed.
+- Live input level, elapsed time, pause/resume, stop, name and save locally.
+- Playback has play/pause, seek and back ten seconds.
+- One timeline includes the playhead and two thin edge handles. Drag a handle inward to repeat that region automatically. Return both handles to the ends for normal playback. Original audio stays untouched.
+- From a Song’s Recordings screen, record a new take or tap **+** to add an unattached recording. A Song can contain multiple recordings. The player also offers attachment changes.
 - Interrupted saves remain visible as recoverable drafts. Published audio is immutable and addressed by its SHA-256 hash. Attachments are separate ordered rows.
 
 Capture uses mono AAC in an M4A container, requesting 44.1 kHz and 128 kbps through the native recorder. The operating system may negotiate the actual input format. Audio interruptions pause recording for manual resume. Backgrounding stops/finalizes the current take and keeps it as a draft; background capture is intentionally not enabled. A force-killed or otherwise incomplete encoded file may not be playable; recovery never silently deletes it.
@@ -56,7 +59,7 @@ Swipe left on a saved song or recording to reveal its trash button, or use Delet
 
 Tap **Tuner** in primary navigation. It listens locally, shows a string target and cents, and supports automatic or manual string selection. Settings offer Standard, Drop D and custom six-string tuning saved locally. Expand Audio details for frequency, periodicity confidence, input level and a live FFT spectrum. Reference pitch is A4 = 440 Hz. No tuner audio is saved or uploaded. The tuner pauses on background/interruption; restart explicitly.
 
-Stage 3 phone acceptance is pending; see [roadmap](docs/roadmap.md) for current stage and next work. Pitch tests use synthetic tones; real guitars, rooms and microphone routes still need validation. The DSP uses the existing [record PCM stream API](https://pub.dev/packages/record), with analysis in a Dart isolate.
+Stage 7 workflow acceptance is pending; see [roadmap](docs/roadmap.md) for current stage and next work. Pitch tests use synthetic tones; real guitars, rooms and microphone routes still need validation. The DSP uses the existing [record PCM stream API](https://pub.dev/packages/record), with analysis in a Dart isolate.
 
 ## Update the running iPhone app
 
@@ -71,7 +74,7 @@ flutter run -d <your-iphone-device-id>
 
 Use `flutter devices` to obtain the device ID. Do not uninstall the app to update it: install the new build over the existing app to retain the local library. Xcode 27 and Flutter are already installed on the lead development Mac. For another machine, follow [Flutter's iOS setup guide](https://docs.flutter.dev/platform-integration/ios/setup).
 
-Stage 2 has been tested successfully by the user on iPhone. Stage 3 is checked in automated tests here and still requires the new tuner portion of the [phone acceptance session](docs/iphone-checklist.md).
+Earlier stages have been tested by the user on iPhone. This Song-first revision needs the current [phone acceptance session](docs/iphone-checklist.md) before Stage 8 planning resumes.
 
 ## Checks
 

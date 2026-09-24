@@ -73,7 +73,7 @@ Stage 4 decision: after testing the prototypes, the user chose an ordinary sprea
 - Switch metronome → tuner → recording → playback → metronome, checking audio-session recovery. Check Bluetooth latency separately; the visual indicator is approximate and is not a hardware latency measurement.
 
 
-## Stage 5/6 refinements + Stage 7 acceptance — 0.7
+## Stage 5/6 refinements + Stage 7 acceptance — 0.7 (historical workflow)
 
 - Upgrade over 0.6 with both old grid-derived tabs and plain ASCII tabs. Check all content, overflow blocks and Saved annotations. Save/reopen without loss. New tabs have 40 positions per string.
 - At the narrowest phone width, type `7h9`, `3/5`, `7\6` and arbitrary text. No line should wrap or scroll sideways. Backspace over content and repeated dashes, forward Delete, selection deletion and spaces must preserve width/borders. Check iOS copy/paste, undo, cursor dragging and composition. Overflow paste is rejected whole with a message; add a block and retry. Test landscape and larger system text settings.
@@ -84,3 +84,19 @@ Stage 4 decision: after testing the prototypes, the user chose an ordinary sprea
 - A/B: set 2–4 seconds in a longer recording, Loop A–B, Play. Listen through repeated boundaries; seek inside/outside the region and verify clamping/absolute time labels. Adjust and apply a new region, clear to full recording, then try whole-take repeat. Very short regions under 200 ms cannot apply. Original audio remains unchanged.
 - Try backgrounding/interruptions while applying or playing a loop, then leave/reopen. Loop selection is intentionally session-local. Test speaker and headphones; synthetic/widget tests cannot certify native clip boundaries or route latency.
 - Stage 8 remains import/export and cleanup/stabilization; no file interchange or room profiling has been added here.
+
+
+## Current acceptance — Song-first Stage 7 revision, 0.7.1
+
+This section supersedes the older standalone-note and explicit A/B workflow steps above.
+
+- Update in place without uninstalling. Verify standalone notes now appear as Songs. For a Song that had multiple notes, check every old title/body in its one Notes document. Chords, tab/annotations, recordings and audio files should remain intact.
+- Check Songs home, compact cards and four bottom destinations. More should contain only Metronome and Settings. No dashboard slogans, standalone Notes destination or recording-to-note/tab shortcuts.
+- + New → each editor → immediately Back: no new card. Repeat with whitespace-only lyrics/notes, default tabs and extra blank Tab Blocks. Enter meaningful text, wait for saved status, leave/reopen and verify persistence. Title-only edits may create a Song.
+- Notes-only, tab-only and chords-only cards open directly. Add another component via the folder button; the card should then open the workspace. Verify one-tap performance mode from a chord sheet/workspace. Edit/reopen each component without changing the others.
+- Visit an older Song and return: order must stay the same. Save unchanged content: same. Edit title or any document, record for the Song, attach/detach/delete a recording: the affected Song should move to the top.
+- Independently record and save a take. Song → Recordings → + → select it. Add a second recording. Confirm both appear and retain audio. Deleting the Song removes its documents but leaves both recordings independent. Cancel/confirm song and recording deletion from swipe and detail actions.
+- Playback starts with handles at the ends. Play/pause, seek and back ten seconds. Drag each boundary inward while paused and while playing; play should repeat only that region. Seek outside the region should clamp. Drag both boundaries back to the ends; playback should stop normally at the recording’s end. Try short regions, near-overlapping handles, portrait/landscape and actual finger target accuracy.
+- Background/interrupt playback while applying/playing a region; verify pause and reliable manual resume. Reopen a recording: region resets to full length. Check speaker/headphones; automated tests do not certify native clip edges or route latency.
+- More → Settings → Dark Mode. Inspect Songs, all three editors, workspace, recording lists/playback, tuner and metronome. Relaunch and verify the preference remains.
+- Continue the Stage 5 keyboard and Stage 6 Listen for BPM device checks above where not already accepted. **Do not advance Stage 8 until feedback on this revision.**

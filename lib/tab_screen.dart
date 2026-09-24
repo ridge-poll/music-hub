@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'document.dart';
+import 'delete_action.dart';
 import 'store.dart';
 import 'tab_document.dart';
 import 'fixed_tab_editor.dart';
@@ -15,10 +16,12 @@ class TabScreen extends StatefulWidget {
 
 class _TabScreenState extends State<TabScreen> with WidgetsBindingObserver {
   TabDocument? tab;
+  late final title = TextEditingController(text: widget.song.title);
   String? loadError;
   String status = 'Not saved yet';
   final controller = TextEditingController();
   final undo = UndoHistoryController();
+  bool deleting = false;
   Timer? debounce;
   Future<bool>? pending;
   int generation = 0, savedGeneration = 0;
@@ -66,6 +69,7 @@ class _TabScreenState extends State<TabScreen> with WidgetsBindingObserver {
   }
 
   Future<bool> save() async {
+    if (deleting) return true;
     debounce?.cancel();
     if (tab == null) return true;
     if (pending != null) {
@@ -73,10 +77,17 @@ class _TabScreenState extends State<TabScreen> with WidgetsBindingObserver {
       if (!ok || !mounted) return false;
       return save();
     }
-    if (generation == savedGeneration && tab!.revision > 0) return true;
+    if (generation == savedGeneration) return true;
+    final song = SongDocument.decode(widget.song.encode(), widget.song.revision)
+      ..title = title.text.trim();
+    if (song.revision == 0 && song.isBlank && !tab!.hasContent) {
+      savedGeneration = generation;
+      if (mounted) setState(() => status = "Not saved yet");
+      return true;
+    }
     final version = generation;
     final snapshot = TabDocument.decode(tab!.encode(), tab!.revision);
-    final operation = persist(snapshot, version);
+    final operation = persist(snapshot, song, version);
     pending = operation;
     final ok = await operation;
     pending = null;
@@ -85,10 +96,20 @@ class _TabScreenState extends State<TabScreen> with WidgetsBindingObserver {
     return ok;
   }
 
-  Future<bool> persist(TabDocument snapshot, int version) async {
+  Future<bool> persist(
+    TabDocument snapshot,
+    SongDocument song,
+    int version,
+  ) async {
     if (mounted) setState(() => status = 'Saving…');
     try {
-      final ok = await widget.store.saveTab(snapshot);
+      final ok = snapshot.revision == 0 && !snapshot.hasContent
+          ? await widget.store.save(song)
+          : await widget.store.saveTab(snapshot, song: song);
+      if (ok) {
+        widget.song.revision = song.revision;
+        widget.song.title = song.title;
+      }
       if (mounted) {
         setState(() {
           if (ok) {
@@ -115,7 +136,7 @@ class _TabScreenState extends State<TabScreen> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> leave() async {
+  Future<void> leave({bool workspace = false}) async {
     if (exiting) return;
     exiting = true;
     if (!await save() || !mounted) {
@@ -124,7 +145,28 @@ class _TabScreenState extends State<TabScreen> with WidgetsBindingObserver {
     }
     setState(() => leaving = true);
     await WidgetsBinding.instance.endOfFrame;
-    if (mounted) Navigator.pop(context);
+    if (mounted) Navigator.pop(context, workspace ? 'workspace' : null);
+  }
+
+  Future<void> deleteSong() async {
+    deleting = true;
+    debounce?.cancel();
+    await pending;
+    if (!mounted) return;
+    if (await confirmDelete(
+      context,
+      'Song',
+      () => widget.store.deleteSong(widget.song.id),
+      detail: 'Its documents will be deleted. Recordings remain in Recordings.',
+    )) {
+      if (!mounted) return;
+      setState(() => leaving = true);
+      await WidgetsBinding.instance.endOfFrame;
+      if (mounted) Navigator.pop(context);
+    } else {
+      deleting = false;
+      if (mounted) unawaited(save());
+    }
   }
 
   @override
@@ -155,6 +197,7 @@ class _TabScreenState extends State<TabScreen> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     debounce?.cancel();
+    title.dispose();
     controller.dispose();
     undo.dispose();
     super.dispose();
@@ -175,6 +218,11 @@ class _TabScreenState extends State<TabScreen> with WidgetsBindingObserver {
         ),
         title: const Text('Tab'),
         actions: [
+          IconButton(
+            tooltip: "Song workspace",
+            onPressed: () => leave(workspace: true),
+            icon: const Icon(Icons.folder_open),
+          ),
           TextButton(
             onPressed: tab == null || pending != null ? null : save,
             child: const Text('Save'),
@@ -204,11 +252,14 @@ class _TabScreenState extends State<TabScreen> with WidgetsBindingObserver {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          widget.song.title.isEmpty
-                              ? 'Untitled song'
-                              : widget.song.title,
-                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        TextField(
+                          key: const Key('tab-title'),
+                          controller: title,
+                          decoration: const InputDecoration(
+                            hintText: 'Untitled song',
+                            border: InputBorder.none,
+                          ),
+                          onChanged: (_) => changed(),
                         ),
                         Text(
                           status,
@@ -241,6 +292,17 @@ class _TabScreenState extends State<TabScreen> with WidgetsBindingObserver {
                           ),
                         ),
                       ],
+                    ),
+                  if (widget.song.revision > 0 &&
+                      MediaQuery.viewInsetsOf(context).bottom == 0)
+                    TextButton(
+                      onPressed: deleteSong,
+                      child: Text(
+                        'Delete Song',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
                     ),
                   Focus(
                     canRequestFocus: false,

@@ -24,6 +24,20 @@ class SongDocument {
   String artist;
   String text;
   int revision;
+  // Song-row metadata and component summaries are separate from sheet content.
+  String lastEdited = '';
+  int editedRevision = 0;
+  bool hasTab = false, hasNotes = false;
+  int recordingCount = 0;
+  List<String> get components => [
+    if (text.trim().isNotEmpty) 'Chords/Lyrics',
+    if (hasTab) 'Tab',
+    if (hasNotes) 'Notes',
+    if (recordingCount > 0) 'Recordings',
+  ];
+  bool get isBlank =>
+      title.trim().isEmpty && artist.trim().isEmpty && text.trim().isEmpty;
+
   Map<String, dynamic> toJson() => {
     'formatVersion': 2,
     'id': id,
