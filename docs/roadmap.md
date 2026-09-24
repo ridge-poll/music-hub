@@ -1,8 +1,8 @@
 # Delivery sequence
 
-## Current stage: Stage 6 — metronome
+## Current stage: Stage 7 — musician workflow
 
-Status: final Stage 5 ASCII-text revision implemented; Stage 6 metronome implemented; automated model, storage and UI checks passed. Next acceptance is on the actual iPhone.
+Status: Stage 6 metronome is user-validated on iPhone. Stage 5 fixed-width overwrite refinement, Stage 6 microphone BPM estimation, and Stage 7 workflow features are implemented; 93 automated checks and static analysis pass. Their physical-device acceptance is next. Stage 8 remains import/export and V1 cleanup/stabilization.
 
 ## Stage 1 — complete: chords → local save → reopen → performance
 
@@ -31,31 +31,43 @@ One-tap recording, live input level, pause/resume/stop, durable unfinished-take 
 
 The fretboard, fret-first keypad, active-string keypad and thumbwheel prototypes were tested by the user on iPhone. Their qualitative finding was that specialized input added unnecessary complexity. The initial choice was ordinary editable text cells; the final Stage 5 revision simplifies this further to one plain-text ASCII document. No quantitative scores or ranking are inferred. Tab lab has been removed from app navigation; its source and [study guide](tab-lab.md) remain historical prototypes, separate from production storage.
 
-## Stage 5 — final revision: persistent ASCII tabs
+## Stage 5 — refined: fixed-width, overwrite ASCII tabs
 
-- Open **Tab** from a song. One monospaced plain-text editor replaces the grid. New tabs start with the requested six-string blank ASCII block, high e to low E.
-- Exact text/spacing, normal keyboard, selection and copy/paste; horizontal scrolling instead of automatic line wrapping. No parsing, validation, rhythm or specialized input controls.
-- **+ Tab Block** appends another blank six-string block. Existing text is not replaced or trimmed.
-- Existing format-1 grids convert to format-2 text on opening and autosave using the same document/arrangement identity and normal revision checks. Single-line cells become padded ASCII rows. Cells containing tabs or line breaks receive a labeled reference and a verbatim text entry below the blocks, preserving their complete contents. No history system or hidden grid copies are added.
-- Song/arrangement ownership, local autosave, Save, save-before-navigation, stale-write protection and deletion behavior remain.
-- Stable grid-column IDs are retired by this explicit text-only revision. Future audio alignment needs separate annotations; text is not interpreted as musical positions.
-- Swipe-delete red reveal continuity from Stage 5 remains.
+- One plain-looking monospaced editor; every string has 40 editable character positions plus protected label/borders. The same width is used across all blocks/devices; font size fits the screen (up to 13 pt). Only vertical scrolling; text scaling for this canvas is fitted rather than allowing rows to wrap.
+- Typing/paste overwrites positions. Backspace restores dashes and moves left; forward Delete restores dashes in place. Space over a dash advances without changing it. Selection deletion clears positions without deleting string labels or structure.
+- Entry continues through available string positions. Return moves to the next string. An entry that exceeds the remaining document capacity is rejected as a whole with a message; **+ Tab Block** adds capacity without changing existing text. No pitch, technique, rhythm or notation interpretation.
+- Native format 3 retains song/arrangement identity, autosave, Save, revision checks and deletion behavior. Legacy format-1 grids and format-2 ASCII tabs migrate on opening. Long six-string rows continue into successive fixed-width blocks; text outside recognizable blocks remains verbatim in expandable **Saved annotations**. No history copies are stored.
+- Test the actual iOS keyboard, selection, Unicode/composition, row boundaries and small-screen layout before considering this refinement accepted.
 
-## Stage 6 — current: metronome
+## Stage 6 — iPhone-validated metronome; BPM listening added
 
-- One-tap Metronome from primary navigation. BPM 40–240, tap tempo, 1–12 beats per bar and denominator 2/4/8.
-- Each beat cycles normal → accented → silent. Default 4/4 accents the first beat. BPM counts the displayed note unit; changing the denominator does not silently rescale tempo.
-- Sample-positioned PCM clicks generated entirely on-device, played as a native looping WAV using the existing audio stack. UI refreshes do not schedule clicks. A whole-bar loop lasts approximately one minute; device acceptance must check the loop boundary.
-- Start/Stop, highlighted beats and local preference persistence. Tempo/signature/accent changes restart on the first beat; no subdivisions, swing or tempo automation.
-- Foreground-only playback. Backgrounding, interruption, output disconnection and leaving stop playback; restart is explicit. No microphone access or new dependencies.
+- BPM 40–240, tap tempo, 1–12 beats per bar, denominator 2/4/8 and normal/accented/silent beats. Local settings persist.
+- Sample-positioned native audio loop; changes restart on beat one. BPM counts the displayed note unit. Foreground-only playback stops on exit/background/interruption and requires explicit restart.
+- **Listen for BPM** stops metronome playback, captures 12 seconds of microphone PCM, then analyzes entirely on-device in an isolate. It uses energy-rise onsets and normalized autocorrelation, not ML or network services.
+- Offers a candidate tempo and valid half/double choices. Nothing changes until **Use … BPM** is tapped; applying does not start playback. Weak/nonperiodic input shows no estimate. Audio is temporary in memory and is not saved.
+- Capture stops on cancellation, exit, background or interruption. A capture timeout prevents indefinite listening. This is a simple pulse estimator: mixed music, syncopation and changing tempo can yield ambiguous/wrong estimates. Real music/device validation remains pending.
 
-## Next
+## Stage 7 — current: capture → develop → practice
 
-1. Validate final ASCII tabs on iPhone: upgrade an existing grid, inspect all content, edit/paste, add a block, save/reopen and check horizontal scrolling.
-2. Validate the metronome on speaker/headphones at slow and fast tempos, through a full loop, with signature/accent changes and interruptions. Verify switching between tuner, recorder, playback and metronome.
-3. After Stage 6 acceptance, choose the next remaining V1 slice: A/B loops, derived-asset trim/waveform, simple notes or file interchange.
+- Song workspace links chords/lyrics, Tab, Notes and Recordings. Chord/tab/note content saves independently.
+- **Quick idea** in the main toolbar opens a plain note immediately, without creating a song. The existing one-tap Record action captures unattached audio. **Notes** navigation collects saved notes/ideas; they can later be attached to or detached from songs.
+- Free-form note title/body, local autosave, explicit Save, save-before-leaving, stale-write rejection and confirmed swipe/detail deletion. Attachments use separate ordered rows. Deleting a song leaves notes and recordings available as unattached ideas.
+- Recording playback adds **Jot a note**, **Open song** and **Work on tab** (song actions appear when attached). Opening another workspace pauses playback.
+- **A/B practice loop**: range handles or Set A/Set B at the playhead, explicit Loop A–B and Clear A/B. Minimum region 200 ms. Native clipping plus native repeat, without modifying the immutable original. Seek/time labels stay in original recording coordinates. Range selection is session-local; it does not create a derived audio asset.
+- Whole-recording repeat remains available outside A/B mode. Backgrounding pauses playback. Compact playback artwork leaves room for practice controls.
 
-Full ChordPro/file interchange, transpose/capo, tags/folders, sync/backup and the remaining V1 scope are not complete.
+## Stage 8 — next: import/export and V1 cleanup/stabilization
+
+After Stage 7 iPhone acceptance, prioritize full-fidelity native backup/restore, agreed interchange scope (ChordPro import/export, Guitar Pro import, MusicXML import/view), and V1 usability/reliability cleanup. Define faithful behavior for free-form tabs before promising interchange equivalence. Include migration/backup round trips, error handling, accessibility and Android/device audio testing.
+
+Remaining original V1 items such as trim/derived-asset waveform, transpose/capo, tags/folders and offline sync are not complete and must be explicitly triaged during Stage 8 planning; this stage marker does not imply they already exist. Sync/server/ML remain deferred. No room-acoustics implementation is included.
+
+## Next acceptance
+
+1. Upgrade and verify existing tabs and annotations, overwrite/backspace/space/Delete behavior, no wrapping, added blocks and local reopen on iPhone.
+2. Try BPM listening with clear beats, ordinary songs, silence and noisy/ambiguous passages; check explicit application and microphone release.
+3. Capture an unattached note/audio idea, attach it to a song, work between song surfaces, and practice a short A/B loop. Check loop bounds, repeated audio, navigation, backgrounding and deletion.
+4. Proceed to Stage 8 after feedback on these workflows.
 
 ## Later DSP tools — room-acoustics profiling (idea only)
 

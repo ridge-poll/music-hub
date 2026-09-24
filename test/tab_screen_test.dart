@@ -13,7 +13,7 @@ import 'package:music_hub/tab_document.dart';
 
 void main() {
   testWidgets(
-    'ASCII tab preserves text and appends blocks, then saves/reopens verbatim',
+    'fixed tab overwrites, fits the phone, appends blocks and saves/reopens',
     (tester) async {
       sqfliteFfiInit();
       tester.view.physicalSize = const Size(390, 844);
@@ -77,12 +77,21 @@ void main() {
       await flush();
       expect(find.byType(TextField), findsOneWidget);
       expect(tester.widget<TextField>(field).controller!.text, blankTabBlock);
-      const raw =
-          'e|----0h2---3/5----7\\6----|\nB|  x  :)   🎸  |\n  annotations  \n';
-      await tester.enterText(field, raw);
+      final control = tester.widget<TextField>(field).controller!;
+      await tester.tap(field);
+      control.selection = const TextSelection.collapsed(offset: 15);
+      tester.testTextInput.updateEditingValue(
+        TextEditingValue(
+          text: blankTabBlock.replaceRange(15, 15, '7h9'),
+          selection: const TextSelection.collapsed(offset: 18),
+        ),
+      );
+      await tester.pump();
+      final raw = blankTabBlock.replaceRange(15, 18, '7h9');
+      expect(control.text, raw);
       expect(tester.testTextInput.isVisible, true);
       expect(tester.widget<TextField>(field).style!.fontFamily, 'Courier');
-      expect(tester.getSize(field).width, greaterThan(390));
+      expect(tester.getSize(field).width, lessThanOrEqualTo(390));
       if (screenshots != null) {
         await tester.tap(find.text('Done'));
         await tester.pumpAndSettle();
@@ -94,7 +103,7 @@ void main() {
           final image = await boundary.toImage(pixelRatio: 2);
           final png = await image.toByteData(format: ui.ImageByteFormat.png);
           await File(
-            '$screenshots/tab-ascii.png',
+            '$screenshots/tab-fixed.png',
           ).writeAsBytes(png!.buffer.asUint8List());
           image.dispose();
         });
@@ -104,7 +113,7 @@ void main() {
       await tester.pump();
       await tester.tap(find.text('Tab Block'));
       await tester.pumpAndSettle();
-      final expected = '$raw\n$blankTabBlock';
+      final expected = '$raw\n\n$blankTabBlock';
       expect(tester.widget<TextField>(field).controller!.text, expected);
       await tester.tap(find.text('Save'));
       await flush();

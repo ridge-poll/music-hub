@@ -9,6 +9,11 @@ import 'audio_files.dart';
 import 'document.dart';
 import 'recording.dart';
 import 'store.dart';
+import 'practice_loop.dart';
+import 'note.dart';
+import 'notes_screen.dart';
+import 'main.dart' show EditorScreen;
+import 'tab_screen.dart';
 
 class SongRecordingsScreen extends StatefulWidget {
   const SongRecordingsScreen({
@@ -714,17 +719,27 @@ class PlaybackScreen extends StatefulWidget {
     required this.store,
     required this.files,
     required this.recording,
+    this.player,
   });
   final MusicStore store;
   final AudioFiles files;
   final RecordingEntry recording;
+  final AudioPlayer? player;
   @override
   State<PlaybackScreen> createState() => _PlaybackScreenState();
 }
 
 class _PlaybackScreenState extends State<PlaybackScreen>
     with WidgetsBindingObserver {
-  final player = AudioPlayer();
+  late final player = widget.player ?? AudioPlayer();
+  Duration fullDuration = Duration.zero;
+  PracticeLoop? activeRegion;
+  double regionA = 0, regionB = 0;
+  bool changingLoop = false, foreground = true;
+  int get absolutePosition =>
+      activeRegion?.toAbsolute(player.position.inMilliseconds) ??
+      player.position.inMilliseconds;
+
   bool ready = false;
   bool loop = false;
   String? error;
@@ -747,13 +762,19 @@ class _PlaybackScreenState extends State<PlaybackScreen>
 
   Future<void> load() async {
     try {
-      final session = await AudioSession.instance;
-      await session.configure(const AudioSessionConfiguration.music());
+      if (widget.player == null) {
+        final session = await AudioSession.instance;
+        await session.configure(const AudioSessionConfiguration.music());
+      }
       await player.setFilePath(
         widget.files.resolve(widget.recording.relativePath).path,
       );
       if (mounted) {
         setState(() {
+          fullDuration =
+              player.duration ??
+              Duration(milliseconds: widget.recording.durationMs);
+          regionB = fullDuration.inMilliseconds.toDouble();
           ready = true;
           error = null;
         });
@@ -791,6 +812,90 @@ class _PlaybackScreenState extends State<PlaybackScreen>
     unawaited(
       act(player.play),
     ); // play completes when playback stops, not when it begins
+  }
+
+  Future<void> setRegion(PracticeLoop? region) async {
+    if (changingLoop ||
+        (region != null && !region.validFor(fullDuration.inMilliseconds))) {
+      return;
+    }
+    final wasPlaying = player.playing;
+    setState(() => changingLoop = true);
+    try {
+      await player.pause();
+      await player.setClip(
+        start: region == null ? null : Duration(milliseconds: region.startMs),
+        end: region == null ? null : Duration(milliseconds: region.endMs),
+      );
+      await player.setLoopMode(region == null ? LoopMode.off : LoopMode.one);
+      await player.seek(Duration.zero);
+      if (mounted) {
+        setState(() {
+          activeRegion = region;
+          loop = region != null;
+          error = null;
+        });
+      }
+      if (mounted && foreground && wasPlaying) unawaited(act(player.play));
+    } catch (_) {
+      try {
+        await player.setClip();
+        await player.setLoopMode(LoopMode.off);
+      } catch (_) {}
+      if (mounted) {
+        setState(() {
+          activeRegion = null;
+          loop = false;
+          error = 'Could not set this loop. Playback is paused; try again.';
+        });
+      }
+    } finally {
+      if (mounted) setState(() => changingLoop = false);
+    }
+  }
+
+  Future<void> openWorkspace({bool tab = false}) async {
+    await act(player.pause);
+    try {
+      final songs = await widget.store.list();
+      final song = songs.where((s) => s.id == attachedId).firstOrNull;
+      if (song == null || !mounted) return;
+      await Navigator.push(
+        context,
+        MaterialPageRoute<void>(
+          builder: (_) => tab
+              ? TabScreen(store: widget.store, song: song)
+              : EditorScreen(
+                  store: widget.store,
+                  song: song,
+                  files: widget.files,
+                ),
+        ),
+      );
+    } catch (_) {
+      if (mounted) {
+        setState(() => error = 'Could not open the song. Try again.');
+      }
+    }
+  }
+
+  Future<void> jotNote() async {
+    await act(player.pause);
+    if (!mounted) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => NoteScreen(
+          store: widget.store,
+          note: MusicNote(
+            title: widget.recording.title,
+            text: 'Recording: ${widget.recording.title}\n\n',
+            songId: attachedId,
+            songTitle: attachedTitle,
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> attach() async {
@@ -851,7 +956,9 @@ class _PlaybackScreenState extends State<PlaybackScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused) {
+    foreground = state == AppLifecycleState.resumed;
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
       unawaited(act(player.pause));
     }
   }
@@ -873,14 +980,14 @@ class _PlaybackScreenState extends State<PlaybackScreen>
         children: [
           const SizedBox(height: 20),
           Container(
-            height: 160,
+            height: 96,
             decoration: BoxDecoration(
               color: const Color(0xFFEAF0E6),
               borderRadius: BorderRadius.circular(28),
             ),
             child: const Icon(
               Icons.graphic_eq,
-              size: 72,
+              size: 48,
               color: Color(0xFF276752),
             ),
           ),
@@ -910,10 +1017,13 @@ class _PlaybackScreenState extends State<PlaybackScreen>
               stream: player.positionStream,
               initialData: player.position,
               builder: (context, snapshot) {
-                final duration =
-                    player.duration ??
-                    Duration(milliseconds: widget.recording.durationMs);
-                final current = snapshot.data ?? Duration.zero;
+                final duration = fullDuration;
+                final relative = snapshot.data ?? Duration.zero;
+                final current = Duration(
+                  milliseconds:
+                      activeRegion?.toAbsolute(relative.inMilliseconds) ??
+                      relative.inMilliseconds,
+                );
                 final max = duration.inMilliseconds.toDouble();
                 return Column(
                   children: [
@@ -923,11 +1033,17 @@ class _PlaybackScreenState extends State<PlaybackScreen>
                         max > 0 ? max : 1,
                       ),
                       max: max > 0 ? max : 1,
-                      onChanged: max > 0
+                      onChanged: max > 0 && !changingLoop
                           ? (value) => unawaited(
                               act(
                                 () => player.seek(
-                                  Duration(milliseconds: value.round()),
+                                  Duration(
+                                    milliseconds:
+                                        activeRegion?.toRelative(
+                                          value.round(),
+                                        ) ??
+                                        value.round(),
+                                  ),
                                 ),
                               ),
                             )
@@ -945,6 +1061,75 @@ class _PlaybackScreenState extends State<PlaybackScreen>
               },
             ),
             const SizedBox(height: 16),
+            if (fullDuration.inMilliseconds >= 200) ...[
+              const Text('A/B practice loop'),
+              RangeSlider(
+                key: const Key('loop-range'),
+                values: RangeValues(regionA, regionB),
+                min: 0,
+                max: fullDuration.inMilliseconds.toDouble(),
+                labels: RangeLabels(
+                  preciseTime(regionA.round()),
+                  preciseTime(regionB.round()),
+                ),
+                onChanged: changingLoop
+                    ? null
+                    : (range) => setState(() {
+                        regionA = range.start;
+                        regionB = range.end;
+                      }),
+              ),
+              Text(
+                'A ${preciseTime(regionA.round())}   ·   B ${preciseTime(regionB.round())}',
+                textAlign: TextAlign.center,
+              ),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 8,
+                children: [
+                  TextButton(
+                    onPressed: changingLoop
+                        ? null
+                        : () => setState(() {
+                            regionA = absolutePosition.toDouble().clamp(
+                              0,
+                              regionB,
+                            );
+                          }),
+                    child: const Text('Set A here'),
+                  ),
+                  TextButton(
+                    onPressed: changingLoop
+                        ? null
+                        : () => setState(() {
+                            regionB = absolutePosition.toDouble().clamp(
+                              regionA,
+                              fullDuration.inMilliseconds.toDouble(),
+                            );
+                          }),
+                    child: const Text('Set B here'),
+                  ),
+                  FilledButton.tonal(
+                    onPressed: changingLoop || regionB - regionA < 200
+                        ? null
+                        : () => setRegion(
+                            PracticeLoop(regionA.round(), regionB.round()),
+                          ),
+                    child: const Text('Loop A–B'),
+                  ),
+                  if (activeRegion != null)
+                    TextButton(
+                      onPressed: changingLoop ? null : () => setRegion(null),
+                      child: const Text('Clear A/B'),
+                    ),
+                ],
+              ),
+              if (activeRegion != null)
+                Text(
+                  'Looping ${preciseTime(activeRegion!.startMs)} – ${preciseTime(activeRegion!.endMs)}',
+                  textAlign: TextAlign.center,
+                ),
+            ],
             StreamBuilder<PlayerState>(
               stream: player.playerStateStream,
               builder: (context, snapshot) {
@@ -956,22 +1141,24 @@ class _PlaybackScreenState extends State<PlaybackScreen>
                   children: [
                     IconButton(
                       tooltip: 'Back 10 seconds',
-                      onPressed: () => unawaited(
-                        act(
-                          () => player.seek(
-                            Duration(
-                              milliseconds:
-                                  (player.position.inMilliseconds - 10000)
-                                      .clamp(0, 1 << 40),
+                      onPressed: changingLoop
+                          ? null
+                          : () => unawaited(
+                              act(
+                                () => player.seek(
+                                  Duration(
+                                    milliseconds:
+                                        (player.position.inMilliseconds - 10000)
+                                            .clamp(0, 1 << 40),
+                                  ),
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
-                      ),
                       icon: const Icon(Icons.replay_10),
                     ),
                     const SizedBox(width: 20),
                     FilledButton(
-                      onPressed: playOrPause,
+                      onPressed: changingLoop ? null : playOrPause,
                       style: FilledButton.styleFrom(
                         padding: const EdgeInsets.all(20),
                         shape: const CircleBorder(),
@@ -984,19 +1171,21 @@ class _PlaybackScreenState extends State<PlaybackScreen>
                     const SizedBox(width: 20),
                     IconButton(
                       tooltip: 'Loop recording',
-                      isSelected: loop,
-                      onPressed: () => unawaited(
-                        act(() async {
-                          await player.setLoopMode(
-                            loop ? LoopMode.off : LoopMode.one,
-                          );
-                          if (mounted) {
-                            setState(() {
-                              loop = !loop;
-                            });
-                          }
-                        }),
-                      ),
+                      isSelected: loop && activeRegion == null,
+                      onPressed: changingLoop || activeRegion != null
+                          ? null
+                          : () => unawaited(
+                              act(() async {
+                                await player.setLoopMode(
+                                  loop ? LoopMode.off : LoopMode.one,
+                                );
+                                if (mounted) {
+                                  setState(() {
+                                    loop = !loop;
+                                  });
+                                }
+                              }),
+                            ),
                       icon: const Icon(Icons.repeat),
                     ),
                   ],
@@ -1005,6 +1194,27 @@ class _PlaybackScreenState extends State<PlaybackScreen>
             ),
           ],
           const SizedBox(height: 32),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 12,
+            children: [
+              TextButton.icon(
+                onPressed: jotNote,
+                icon: const Icon(Icons.edit_note),
+                label: const Text('Jot a note'),
+              ),
+              if (attachedId != null) ...[
+                TextButton(
+                  onPressed: openWorkspace,
+                  child: const Text('Open song'),
+                ),
+                TextButton(
+                  onPressed: () => openWorkspace(tab: true),
+                  child: const Text('Work on tab'),
+                ),
+              ],
+            ],
+          ),
           OutlinedButton.icon(
             onPressed: attach,
             icon: const Icon(Icons.link),

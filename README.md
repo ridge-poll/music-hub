@@ -1,6 +1,6 @@
 # Music Hub
 
-A local-first music workspace for iOS and Android, with iPhone as the lead test device. Version 0.6 finalizes plain-text ASCII tabs and adds the Stage 6 metronome.
+A local-first music workspace for iOS and Android, with iPhone as the lead test device. Version 0.7 adds fixed-width overwrite tabs, microphone BPM estimates, standalone/song notes and A/B recording practice.
 
 ## Song sheets
 
@@ -22,21 +22,27 @@ Songs autosave locally and have an explicit Save action. Performance mode offers
 
 ## Tabs
 
-Open a song and tap **Tab**. Edit one monospaced ASCII document with the normal keyboard. New tabs start with a blank six-string block. Spaces, punctuation, annotations and arbitrary text stay as typed; long lines scroll horizontally without wrapping. **+ Tab Block** appends another blank block.
+Open a song and tap **Tab**. Each string has 40 fixed character positions, fitted to the phone width with a monospaced font. Type to overwrite dashes; backspace restores a dash and moves left. Space over an empty position advances. Labels and line lengths stay fixed. **+ Tab Block** adds another six-string block; scrolling is vertical only.
 
-Tabs autosave locally under the song’s hidden arrangement, independently of chords/lyrics. Older grids migrate on opening: ordinary cells become aligned ASCII rows; multiline/tab-containing cells are retained verbatim below the block with labeled references. No history storage is added. See [the roadmap](docs/roadmap.md).
+Tabs retain local autosave and song/arrangement ownership. Older long ASCII rows continue into additional blocks; free-form text outside six-string blocks remains editable under Saved annotations. There is no musical validation or history system. See [the roadmap](docs/roadmap.md).
 
-## Metronome
+## Notes and quick ideas
 
-Tap **Metronome** in primary navigation. Set 40–240 BPM, tap tempo, choose a time signature, and tap individual beats to cycle normal/accented/silent. Start and Stop control local audio; settings persist. BPM counts the displayed note unit. Changing settings during playback restarts the bar.
+Tap **Quick idea** (the writing icon in the main toolbar) to jot a note without creating a song, or use **Record** for an audio idea. Notes has a plain title/body, autosave and optional song attachment. The song screen links chords/lyrics, Tab, Notes and Recordings. Notes and recordings remain unattached if their song is deleted.
 
-Clicks are generated at precise sample positions in a native looping audio track, without network or microphone access. Leaving, backgrounding or audio interruption stops playback; restart manually. Native timing, loop transitions and route changes still require iPhone acceptance.
+## Metronome and BPM listening
+
+Tap **Metronome** for 40–240 BPM, tap tempo, time signature and per-beat accents/muting. Settings persist. BPM counts the displayed note unit; changes restart the bar. Audio uses sample-positioned native playback and stops on background/exit/interruption.
+
+**Listen for BPM** pauses the clicks and listens for 12 seconds. On-device analysis offers an estimated pulse, including half/double alternatives; **Use … BPM** explicitly applies your choice. Silence/weak rhythm may give no result, and complex music may be ambiguous. No microphone audio is saved or uploaded. Actual music and microphone behavior still need iPhone acceptance.
 
 ## Recordings
 
-- Tap **Record** from the main screen to start a take; microphone permission is requested only there.
+- Tap **Record** from the main screen to start a take; microphone permission is requested when needed.
 - Live input level, elapsed time, pause/resume, stop and name the take.
 - Save locally, then listen with play/pause, seek, replay ten seconds and whole-recording repeat.
+- Select an A/B region with range handles or Set A/Set B, then tap Loop A–B and Play. Clear A/B returns to the full recording. Native clipping leaves original audio untouched.
+- From playback, jot a note or open the attached song/tab.
 - Keep an unattached idea, or attach it to a song from the player. Songs have their own Recordings screen.
 - Interrupted saves remain visible as recoverable drafts. Published audio is immutable and addressed by its SHA-256 hash. Attachments are separate ordered rows.
 

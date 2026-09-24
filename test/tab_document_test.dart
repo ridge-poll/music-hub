@@ -45,9 +45,19 @@ void main() {
       expect(tab.arrangementId, 'arrangement');
       expect(tab.revision, 9);
       for (final value in values) {
-        expect(tab.text, contains(value));
+        final rows = List.generate(
+          6,
+          (r) => tab.text
+              .split('\n\n')
+              .map(
+                (b) =>
+                    b.split('\n')[r].substring(2, b.split('\n')[r].length - 1),
+              )
+              .join(),
+        ).join('\n');
+        expect('$rows\n${tab.annotations}', contains(value));
       }
-      expect('e|'.allMatches(tab.text).length, 2);
+      expect(tab.text.split('\n\n').length, 4);
       final copy = TabDocument.decode(tab.encode(), 10);
       expect(copy.migrated, false);
       expect(copy.text, tab.text);
@@ -149,7 +159,7 @@ void main() {
         final reopened = await store.loadTab(song.arrangementId);
         expect(reopened.id, original.id);
         expect(reopened.text, migrated.text);
-        expect(reopened.text, contains('  raw\n\tvalue  '));
+        expect(reopened.annotations, contains('  raw\n\tvalue  '));
         expect(reopened.migrated, false);
         expect((await store.db.query('tab_documents')).length, 1);
       } finally {

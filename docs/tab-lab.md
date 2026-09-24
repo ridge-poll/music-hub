@@ -1,4 +1,4 @@
-> Final Stage 5 revision: the production editor is now one plain-text ASCII document. This study remains historical.
+> Current Stage 5 refinement: the production editor is fixed-width ASCII with overwrite behavior. This study remains historical.
 
 # Stage 4: archived iPhone tab-entry comparison
 

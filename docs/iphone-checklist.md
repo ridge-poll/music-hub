@@ -71,3 +71,16 @@ Stage 4 decision: after testing the prototypes, the user chose an ordinary sprea
 - Cycle individual beats through normal, accented and silent. Verify sound and highlighting agree; settings changes intentionally restart at beat one. Close/reopen and confirm preferences, without automatic playback.
 - Stop while preparing/playing. Leave immediately after Start; background, receive an interruption, disconnect headphones and return. Audio must stop and require explicit restart.
 - Switch metronome → tuner → recording → playback → metronome, checking audio-session recovery. Check Bluetooth latency separately; the visual indicator is approximate and is not a hardware latency measurement.
+
+
+## Stage 5/6 refinements + Stage 7 acceptance — 0.7
+
+- Upgrade over 0.6 with both old grid-derived tabs and plain ASCII tabs. Check all content, overflow blocks and Saved annotations. Save/reopen without loss. New tabs have 40 positions per string.
+- At the narrowest phone width, type `7h9`, `3/5`, `7\6` and arbitrary text. No line should wrap or scroll sideways. Backspace over content and repeated dashes, forward Delete, selection deletion and spaces must preserve width/borders. Check iOS copy/paste, undo, cursor dragging and composition. Overflow paste is rejected whole with a message; add a block and retry. Test landscape and larger system text settings.
+- Metronome → Listen for BPM: permit/deny mic, listen to clear beats and several actual songs for 12 seconds. Use the estimate or half/double option; tempo must not change until chosen. Check silence, noise and music with weak/variable pulse. These are estimates, not guaranteed beat tracking.
+- Cancel listening, leave during permission/start/capture/analysis, background the app, receive a call, then retry. Mic indicator must stop, and no recording should appear in the library. Switching back to metronome/tuner/recorder must recover the audio session.
+- Quick idea → type without making a song → save/reopen in Notes → attach to a song → open from that song's Notes. Test detach, cancel deletion and confirmed deletion. Delete a song; its notes and recordings must remain unattached.
+- Record an unattached riff → attach → Open song / Work on tab / Jot a note. Playback should pause when leaving to develop the idea.
+- A/B: set 2–4 seconds in a longer recording, Loop A–B, Play. Listen through repeated boundaries; seek inside/outside the region and verify clamping/absolute time labels. Adjust and apply a new region, clear to full recording, then try whole-take repeat. Very short regions under 200 ms cannot apply. Original audio remains unchanged.
+- Try backgrounding/interruptions while applying or playing a loop, then leave/reopen. Loop selection is intentionally session-local. Test speaker and headphones; synthetic/widget tests cannot certify native clip boundaries or route latency.
+- Stage 8 remains import/export and cleanup/stabilization; no file interchange or room profiling has been added here.

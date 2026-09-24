@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'document.dart';
 import 'store.dart';
 import 'tab_document.dart';
-import 'sheet_view.dart';
+import 'fixed_tab_editor.dart';
 
 class TabScreen extends StatefulWidget {
   const TabScreen({super.key, required this.store, required this.song});
@@ -219,14 +219,29 @@ class _TabScreenState extends State<TabScreen> with WidgetsBindingObserver {
                     ),
                   ),
                   Expanded(
-                    child: PlainSheetEditor(
+                    child: FixedTabEditor(
                       controller: controller,
                       undoController: undo,
-                      fieldKey: const Key('tab-text'),
-                      hintText: '',
                       onChanged: (_) => changed(),
                     ),
                   ),
+                  if (tab!.annotations.trim().isNotEmpty)
+                    ExpansionTile(
+                      title: const Text('Saved annotations'),
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: TextFormField(
+                            initialValue: tab!.annotations,
+                            maxLines: 4,
+                            onChanged: (value) {
+                              tab!.annotations = value;
+                              changed();
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
                   Focus(
                     canRequestFocus: false,
                     descendantsAreFocusable: false,

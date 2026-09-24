@@ -50,8 +50,9 @@ class NativeMetronomeAudio implements MetronomeAudio {
     return _enqueue(() async {
       if (_disposed || generation != _generation) return;
       final session = await AudioSession.instance;
+      // The BPM microphone listener may have changed the native audio category.
+      await session.configure(const AudioSessionConfiguration.music());
       if (!_configured) {
-        await session.configure(const AudioSessionConfiguration.music());
         _subscriptions.add(
           session.interruptionEventStream.listen((event) {
             if (event.begin) _interrupt();

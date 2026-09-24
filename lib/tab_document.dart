@@ -1,15 +1,9 @@
 import 'dart:convert';
 import 'dart:math' as math;
 import 'document.dart';
+import 'fixed_tab.dart';
 
-final blankTabBlock = [
-  'e',
-  'B',
-  'G',
-  'D',
-  'A',
-  'E',
-].map((label) => '$label|${'-' * 62}|').join('\n');
+final blankTabBlock = blankFixedBlock();
 
 /// Opaque authored text. No note, position or rhythm interpretation.
 class TabDocument {
@@ -19,30 +13,38 @@ class TabDocument {
     this.revision = 0,
     String? text,
     this.migrated = false,
+    this.annotations = '',
   }) : id = id ?? ids.v4(),
        text = text ?? blankTabBlock;
   final String id, arrangementId;
   final bool migrated;
   int revision;
   String text;
+  String annotations;
   String encode() => jsonEncode({
-    'formatVersion': 2,
+    'formatVersion': 3,
     'id': id,
     'arrangementId': arrangementId,
     'text': text,
+    'annotations': annotations,
   });
   factory TabDocument.decode(String content, int revision) {
     final data = jsonDecode(content) as Map<String, dynamic>;
     final version = data['formatVersion'];
-    if (version != 1 && version != 2) {
+    if (version != 1 && version != 2 && version != 3) {
       throw const FormatException('Unsupported tab format');
     }
+    final raw = version == 1 ? _migrate(data) : data['text'] as String;
+    final fitted = version == 3
+        ? (raw, data['annotations'] as String? ?? '')
+        : fitLegacyTab(raw);
     return TabDocument(
       id: data['id'] as String,
       arrangementId: data['arrangementId'] as String,
       revision: revision,
-      text: version == 2 ? data['text'] as String : _migrate(data),
-      migrated: version == 1,
+      text: fitted.$1,
+      annotations: fitted.$2,
+      migrated: version != 3,
     );
   }
 }

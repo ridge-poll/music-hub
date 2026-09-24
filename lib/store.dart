@@ -4,6 +4,7 @@ import 'package:sqflite_common/sqlite_api.dart';
 import 'document.dart';
 import 'recording.dart';
 import 'tab_document.dart';
+import 'note.dart';
 
 class MusicStore {
   MusicStore(this.db);
@@ -403,6 +404,117 @@ class MusicStore {
           'recording_id': recordingId,
         });
       }
+    });
+  }
+
+  Future<List<MusicNote>> notes({String? songId}) async {
+    final rows = await db.rawQuery(
+      '''SELECT n.content,n.revision,s.id AS song_id,s.title AS song_title
+      FROM notes n LEFT JOIN song_notes l ON l.note_id=n.id AND l.deleted=0
+      LEFT JOIN songs s ON s.id=l.song_id AND s.deleted=0
+      WHERE n.deleted=0 ${songId == null ? '' : 'AND s.id=?'} ORDER BY n.revision DESC''',
+      songId == null ? [] : [songId],
+    );
+    return rows
+        .map(
+          (r) => MusicNote.decode(
+            r['content'] as String,
+            r['revision'] as int,
+            songId: r['song_id'] as String?,
+            songTitle: r['song_title'] as String?,
+          ),
+        )
+        .toList();
+  }
+
+  Future<bool> saveNote(MusicNote note) async {
+    final content = note.encode(), base = note.revision;
+    final revision = await db.transaction<int?>((tx) async {
+      final current = await tx.query(
+        'notes',
+        where: 'id=?',
+        whereArgs: [note.id],
+      );
+      if (current.isNotEmpty &&
+          (current.single['deleted'] == 1 ||
+              current.single['revision'] != base)) {
+        return null;
+      }
+      if (current.isEmpty &&
+          note.songId != null &&
+          (await tx.query(
+            'songs',
+            where: 'id=? AND deleted=0',
+            whereArgs: [note.songId],
+          )).isEmpty) {
+        return null;
+      }
+      final stamp = await _stamp(tx);
+      if (current.isEmpty) {
+        await tx.insert('notes', {'id': note.id, ...stamp, 'content': content});
+        if (note.songId != null) {
+          await tx.insert('song_notes', {
+            'id': ids.v4(),
+            ...stamp,
+            'song_id': note.songId,
+            'note_id': note.id,
+          });
+        }
+      } else {
+        await tx.update(
+          'notes',
+          {...stamp, 'content': content},
+          where: 'id=?',
+          whereArgs: [note.id],
+        );
+      }
+      return stamp['revision'] as int;
+    });
+    if (revision == null) return false;
+    note.revision = revision;
+    return true;
+  }
+
+  Future<void> attachNote(String noteId, String? songId) async {
+    await db.transaction((tx) async {
+      if ((await tx.query(
+        'notes',
+        where: 'id=? AND deleted=0',
+        whereArgs: [noteId],
+      )).isEmpty) {
+        throw StateError('Note deleted');
+      }
+      if (songId != null &&
+          (await tx.query(
+            'songs',
+            where: 'id=? AND deleted=0',
+            whereArgs: [songId],
+          )).isEmpty) {
+        throw StateError('Song deleted');
+      }
+      final stamp = await _stamp(tx);
+      await tx.update(
+        'song_notes',
+        {...stamp, 'deleted': 1},
+        where: 'note_id=? AND deleted=0',
+        whereArgs: [noteId],
+      );
+      if (songId != null) {
+        await tx.insert('song_notes', {
+          'id': ids.v4(),
+          ...stamp,
+          'song_id': songId,
+          'note_id': noteId,
+        });
+      }
+    });
+  }
+
+  Future<void> deleteNote(String id) async {
+    await db.transaction((tx) async {
+      final stamp = {...await _stamp(tx), 'deleted': 1};
+      await tx.update('song_notes', stamp, where: 'note_id=?', whereArgs: [id]);
+      await tx.update('notes', stamp, where: 'id=?', whereArgs: [id]);
     });
   }
 

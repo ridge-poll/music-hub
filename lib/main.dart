@@ -1,4 +1,6 @@
 import 'tab_screen.dart';
+import 'note.dart';
+import 'notes_screen.dart';
 import 'metronome_screen.dart';
 import 'delete_action.dart';
 import 'tuner_screen.dart';
@@ -152,6 +154,20 @@ class _LibraryScreenState extends State<LibraryScreen> {
         style: TextStyle(fontWeight: FontWeight.w700),
       ),
       actions: [
+        IconButton(
+          tooltip: 'Quick idea',
+          icon: const Icon(Icons.edit_note),
+          onPressed: () async {
+            await Navigator.push(
+              context,
+              MaterialPageRoute<void>(
+                builder: (_) =>
+                    NoteScreen(store: widget.store, note: MusicNote()),
+              ),
+            );
+            refresh();
+          },
+        ),
         TextButton.icon(
           onPressed: () => open(SongDocument()),
           icon: const Icon(Icons.add),
@@ -171,6 +187,16 @@ class _LibraryScreenState extends State<LibraryScreen> {
     bottomNavigationBar: NavigationBar(
       selectedIndex: page,
       onDestinationSelected: (index) {
+        if (index == 4) {
+          Navigator.push(
+            context,
+            MaterialPageRoute<void>(
+              builder: (_) => NotesScreen(store: widget.store),
+            ),
+          );
+          return;
+        }
+
         if (index == 2 || index == 3) {
           Navigator.of(context).push(
             MaterialPageRoute<void>(
@@ -201,6 +227,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
           icon: Icon(Icons.timer_outlined),
           label: 'Metronome',
         ),
+        NavigationDestination(icon: Icon(Icons.edit_note), label: 'Notes'),
       ],
     ),
     body: SafeArea(
@@ -312,7 +339,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                                   'Song',
                                   () => widget.store.deleteSong(song.id),
                                   detail:
-                                      'Recordings will remain in your library.',
+                                      'Recordings and notes will remain as unattached ideas.',
                                 )) {
                                   refresh();
                                 }
@@ -567,7 +594,7 @@ class _EditorScreenState extends State<EditorScreen>
           context,
           'Song',
           () => widget.store.deleteSong(song.id),
-          detail: 'Recordings will remain in your library.',
+          detail: 'Recordings and notes will remain as unattached ideas.',
         ) &&
         mounted) {
       setState(() {
@@ -747,6 +774,20 @@ class _EditorScreenState extends State<EditorScreen>
                       label: const Text('Recordings'),
                     ),
                     TextButton(onPressed: openTab, child: const Text('Tab')),
+                    TextButton(
+                      onPressed: () async {
+                        if (!await save() || !mounted) return;
+                        if (!context.mounted) return;
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute<void>(
+                            builder: (_) =>
+                                NotesScreen(store: widget.store, song: song),
+                          ),
+                        );
+                      },
+                      child: const Text('Notes'),
+                    ),
                     FilledButton.icon(
                       onPressed: perform,
                       icon: const Icon(Icons.play_arrow),
