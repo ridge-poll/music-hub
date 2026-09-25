@@ -1,17 +1,21 @@
-# Verification — 24 September 2026, version 0.7.1
+# Verification — 25 September 2026, version 0.7.2
 
 ## Passed
 
 - Flutter static analysis: no issues.
-- 72 pure Dart tests covering authored documents, SQLite persistence/upgrades, revisions/stale writes, tombstones, immutable recordings/drafts, tuner DSP/tracking, metronome synthesis, tempo estimation, notes and practice-loop coordinates.
-- 25 Flutter-run tests covering existing song/recording/tuner/prototype flows, fixed-position editing and narrow-screen rendering, tab save/reopen, metronome lifecycle, microphone BPM capture/application/cancellation, notes workflow and A/B playback controls.
+- 73 pure Dart tests covering authored documents, SQLite persistence/upgrades, revisions/stale writes, tombstones, immutable recordings/drafts, tuner DSP/tracking, metronome synthesis, tempo estimation, notes and practice-loop coordinates.
+- 31 Flutter-run tests covering existing song/recording/tuner/prototype flows, fixed-position editing and narrow-screen rendering, tab save/reopen, metronome lifecycle, microphone BPM capture/application/cancellation, notes workflow and A/B playback controls.
 - Formatting and diff whitespace checks.
 
-## Fixed-width tabs
+## Continuous fixed-width tabs
 
-Formatter tests exercise overwrite, backspace on content and repeated dashes, forward Delete, space advancement, selection deletion with protected labels, Unicode grapheme slots and whole-edit rejection when capacity is exceeded. A render-level check at 320 logical pixels with 2× system text verifies that the entire first string occupies one rendered line and stays within the field width. Font letter spacing is explicit so the field theme cannot invalidate width measurement.
+Formatter checks cover overflow on all six strings without changing the active string, automatic closing-bar relocation, Unicode/grapheme slots, long plain-text paste, basic six-row ASCII paste and copied continuation text. Backspace checks cover return across a boundary, an empty trailing block collapsing without deleting the previous block’s last character, another string preventing collapse, and the first block always surviving. Forward Delete, space advancement and selection clearing retain the slot structure.
 
-Migration checks retain long row content across successive fixed-width blocks and preserve non-block annotations. Existing grid migration/store tests check arbitrary content (including CRLF, tabs and Unicode), identity/revisions, save/close/reopen, arrangement isolation and stale/deleted-parent protection. The phone-sized integration test types into a fixed block, appends another with keyboard insets, saves and reopens. `screenshots/tab-fixed.png` is the current preview; ASCII/grid/prototype previews are historical.
+The keyboard widget test grows a continuation, verifies the active string/caret, undoes/redoes the complete growth, deletes the final continuation content and checks collapse without dismissing the keyboard. A render-level check at 320 logical pixels with 2× system text verifies every row of a two-block document remains on one visual line and within the field width. A phone-sized SQLite/editor test appends a continuation, saves and reopens it. The inspected `screenshots/tab-fixed.png` shows the first opening bars and final closing bars with no intermediate bars.
+
+Format-3 fixed blocks migrate to format-4 continuous strings while retaining all slots, identities and annotations. Existing grid/ASCII migration checks retain arbitrary text, Unicode and multiline annotations. Migration saves leave Song lastEdited unchanged. All saved data stays local; no export/backup feature was added.
+
+These tests exercise Flutter text input and a fake keyboard, not the physical iOS keyboard. The current [iPhone checklist](iphone-checklist.md) covers finger selection, caret scrolling, composition, paste and undo/redo on the actual device.
 
 ## BPM listening
 

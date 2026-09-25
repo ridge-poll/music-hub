@@ -10,6 +10,7 @@ import 'package:music_hub/document.dart';
 import 'package:music_hub/main.dart';
 import 'package:music_hub/store.dart';
 import 'package:music_hub/tab_document.dart';
+import 'package:music_hub/fixed_tab.dart';
 
 void main() {
   testWidgets(
@@ -92,6 +93,21 @@ void main() {
       expect(tester.testTextInput.isVisible, true);
       expect(tester.widget<TextField>(field).style!.fontFamily, 'Courier');
       expect(tester.getSize(field).width, lessThanOrEqualTo(390));
+      tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+      addTearDown(tester.view.resetViewInsets);
+      await tester.pump();
+      await tester.tap(find.text('Tab Block'));
+      await tester.pumpAndSettle();
+      final expected = (FixedTabLayout.read(raw)!..appendBlock()).render();
+      expect(tester.widget<TextField>(field).controller!.text, expected);
+      await tester.tap(find.text('Save'));
+      await flush();
+      final saved = (await tester.runAsync(
+        () => store.loadTab(song.arrangementId),
+      ))!;
+      expect(saved.text, expected);
+      tester.view.resetViewInsets();
+      await tester.pump();
       if (screenshots != null) {
         await tester.tap(find.text('Done'));
         await tester.pumpAndSettle();
@@ -108,20 +124,7 @@ void main() {
           image.dispose();
         });
       }
-      tester.view.viewInsets = const FakeViewPadding(bottom: 300);
-      addTearDown(tester.view.resetViewInsets);
-      await tester.pump();
-      await tester.tap(find.text('Tab Block'));
-      await tester.pumpAndSettle();
-      final expected = '$raw\n\n$blankTabBlock';
-      expect(tester.widget<TextField>(field).controller!.text, expected);
-      await tester.tap(find.text('Save'));
-      await flush();
-      final saved = (await tester.runAsync(
-        () => store.loadTab(song.arrangementId),
-      ))!;
-      expect(saved.text, expected);
-      tester.view.resetViewInsets();
+
       await tester.tap(find.byTooltip('Back to song'));
       await tester.pump();
       await flush();

@@ -5,6 +5,7 @@ import 'delete_action.dart';
 import 'store.dart';
 import 'tab_document.dart';
 import 'fixed_tab_editor.dart';
+import 'fixed_tab.dart';
 
 class TabScreen extends StatefulWidget {
   const TabScreen({super.key, required this.store, required this.song});
@@ -178,16 +179,17 @@ class _TabScreenState extends State<TabScreen> with WidgetsBindingObserver {
   }
 
   void addBlock() {
-    final text = controller.text;
-    final separator = text.isEmpty || text.endsWith('\n\n')
-        ? ''
-        : text.endsWith('\n')
-        ? '\n'
-        : '\n\n';
+    final layout = FixedTabLayout.read(controller.text);
+    if (layout == null) return;
+    final location = layout.locate(
+      controller.selection.start.clamp(0, controller.text.length),
+    );
+    final position = layout.length;
+    layout.appendBlock();
     controller.value = TextEditingValue(
-      text: '$text$separator$blankTabBlock',
+      text: layout.render(),
       selection: TextSelection.collapsed(
-        offset: text.length + separator.length,
+        offset: layout.offsetFor(location.row, position),
       ),
     );
     changed();

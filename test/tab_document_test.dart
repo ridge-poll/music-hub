@@ -4,6 +4,7 @@ import 'package:test/test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:music_hub/document.dart';
 import 'package:music_hub/tab_document.dart';
+import 'package:music_hub/fixed_tab.dart';
 import 'package:music_hub/store.dart';
 
 void main() {
@@ -16,6 +17,31 @@ void main() {
     expect(copy.encode(), tab.encode());
     expect(copy.revision, 7);
   });
+  test(
+    'format 3 blocks migrate to continuous strings with annotations unchanged',
+    () {
+      final first = blankFixedBlock().replaceFirst('---', '7h9');
+      final second = blankFixedBlock().replaceFirst('---', '3/5');
+      final tab = TabDocument.decode(
+        jsonEncode({
+          'formatVersion': 3,
+          'id': 'tab',
+          'arrangementId': 'a',
+          'text': '$first\n\n$second',
+          'annotations': '  keep this\n',
+        }),
+        12,
+      );
+      final layout = FixedTabLayout.read(tab.text)!;
+      expect(layout.rows[0].take(3).join(), '7h9');
+      expect(layout.rows[0].skip(40).take(3).join(), '3/5');
+      expect(layout.blockCount, 2);
+      expect(tab.annotations, '  keep this\n');
+      expect(tab.migrated, true);
+      expect(TabDocument.decode(tab.encode(), 12).migrated, false);
+      expect(TabDocument.decode(tab.encode(), 12).text, tab.text);
+    },
+  );
   test(
     'legacy grids migrate every cell, including multiline verbatim content',
     () {
@@ -45,16 +71,9 @@ void main() {
       expect(tab.arrangementId, 'arrangement');
       expect(tab.revision, 9);
       for (final value in values) {
-        final rows = List.generate(
-          6,
-          (r) => tab.text
-              .split('\n\n')
-              .map(
-                (b) =>
-                    b.split('\n')[r].substring(2, b.split('\n')[r].length - 1),
-              )
-              .join(),
-        ).join('\n');
+        final rows = FixedTabLayout.read(
+          tab.text,
+        )!.rows.map((row) => row.join()).join('\n');
         expect('$rows\n${tab.annotations}', contains(value));
       }
       expect(tab.text.split('\n\n').length, 4);
@@ -148,9 +167,11 @@ void main() {
           where: 'id = ?',
           whereArgs: [original.id],
         );
+        final lastEdited = (await store.list()).single.lastEdited;
         final migrated = await store.loadTab(song.arrangementId);
         expect(migrated.migrated, true);
         expect(await store.saveTab(migrated), true);
+        expect((await store.list()).single.lastEdited, lastEdited);
         await store.close();
         store = await MusicStore.open(
           factory: databaseFactoryFfi,

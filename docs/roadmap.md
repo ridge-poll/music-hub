@@ -2,7 +2,7 @@
 
 ## Current stage: Stage 7 — musician workflow
 
-Status: **Stage 7 workflow simplification (0.7.1) is implemented and awaiting iPhone testing.** Songs are now the home and organizational object. Stage 5 fixed-width tabs and Stage 6 on-device BPM estimation remain in place. No Stage 8 features are being added until the user tests this revision and decides the next scope.
+Status: **Stage 7 workflow simplification with continuous-tab refinement (0.7.2) is implemented and awaiting iPhone testing.** Songs are now the home and organizational object. Stage 5 fixed-width tabs and Stage 6 on-device BPM estimation remain in place. No Stage 8 features are being added until the user tests this revision and decides the next scope.
 
 ## Stage 1 — complete: chords → local save → reopen → performance
 
@@ -31,13 +31,15 @@ One-tap recording, live input level, pause/resume/stop, durable unfinished-take 
 
 The fretboard, fret-first keypad, active-string keypad and thumbwheel prototypes were tested by the user on iPhone. Their qualitative finding was that specialized input added unnecessary complexity. The initial choice was ordinary editable text cells; the final Stage 5 revision simplifies this further to one plain-text ASCII document. No quantitative scores or ranking are inferred. Tab lab has been removed from app navigation; its source and [study guide](tab-lab.md) remain historical prototypes, separate from production storage.
 
-## Stage 5 — refined: fixed-width, overwrite ASCII tabs
+## Stage 5 — refined: continuous six-string tab, fixed-width overwrite
 
-- One plain-looking monospaced editor; every string has 40 editable character positions plus protected label/borders. The same width is used across all blocks/devices; font size fits the screen (up to 13 pt). Only vertical scrolling; text scaling for this canvas is fitted rather than allowing rows to wrap.
-- Typing/paste overwrites positions. Backspace restores dashes and moves left; forward Delete restores dashes in place. Space over a dash advances without changing it. Selection deletion clears positions without deleting string labels or structure.
-- Entry continues through available string positions. Return moves to the next string. An entry that exceeds the remaining document capacity is rejected as a whole with a message; **+ Tab Block** adds capacity without changing existing text. No pitch, technique, rhythm or notation interpretation.
-- Native format 3 retains song/arrangement identity, autosave, Save, revision checks and deletion behavior. Legacy format-1 grids and format-2 ASCII tabs migrate on opening. Long six-string rows continue into successive fixed-width blocks; text outside recognizable blocks remains verbatim in expandable **Saved annotations**. No history copies are stored.
-- Test the actual iOS keyboard, selection, Unicode/composition, row boundaries and small-screen layout before considering this refinement accepted.
+- One continuous six-string document displayed in 40-position chunks. The first block shows string labels/opening bars; subsequent blocks are unlabeled continuations. Only the final block has closing bars. Monospaced, fitted to the screen, vertical scrolling only.
+- Typing overwrites slots. At a string’s end, another six-row continuation is created automatically and the caret continues on **that same string**, with closing bars moved to the new final block. No beats, rhythm or musical interpretation.
+- Backspace restores dashes and moves left along the same string, including across visual boundaries. Forward Delete restores a dash in place. Space over a dash advances without changing it. Selection deletion preserves the structure.
+- Backspacing in a completely empty trailing block collapses it, placing the caret at the prior block’s end and restoring its closing bars. A block containing anything on any of its six strings is retained. The first block always exists. + Tab Block remains as an optional manual action.
+- Long plain text wraps along its current string. Simple complete six-row labeled ASCII paste is supported, retaining characters and padding short rows with dashes. Copying the app’s rendered continuation text also works. No general-purpose tab/notation parser is added.
+- Native format 4 preserves song/arrangement ownership, autosave, revisions and annotations. Existing format-3 fixed blocks join into continuous strings without losing slots; earlier grid/ASCII migrations still preserve annotations. Format conversion does not update Song lastEdited. Empty/default continuations still do not create a new Song.
+- Actual iPhone keyboard, caret scrolling, paste and collapse behavior require acceptance; widget tests cover the editing rules and narrow-screen rendering.
 
 ## Stage 6 — iPhone-validated metronome; BPM listening added
 
@@ -64,7 +66,12 @@ Pending: actual iPhone acceptance of the revised home/creation workflow, note mi
 
 ## Stage 8 — deferred until iPhone feedback: import/export and V1 cleanup/stabilization
 
-After Stage 7 iPhone acceptance, prioritize full-fidelity native backup/restore, agreed interchange scope (ChordPro import/export, Guitar Pro import, MusicXML import/view), and V1 usability/reliability cleanup. Define faithful behavior for free-form tabs before promising interchange equivalence. Include migration/backup round trips, error handling, accessibility and Android/device audio testing.
+After Stage 7 iPhone acceptance, plan two distinct features:
+
+- **Backup** lives under **More**. It creates a **single restorable ZIP** of the complete library through the normal iOS **Files** interface. The restore path must preserve all Song documents, metadata, recording relationships and audio assets. This is full-library preservation/restoration, not individual content export.
+- **Export** gets individual human-readable Song/audio content out of Music Hub. Keep its purpose and interface distinct from Backup. Agree on faithful interchange for free-form tabs before promising equivalence; original priorities include ChordPro import/export, Guitar Pro import and MusicXML import/view.
+
+Neither feature is implemented in 0.7.2. Include backup/restore round trips, error handling, accessibility and Android/device audio testing in Stage 8 cleanup/stabilization planning.
 
 Remaining original V1 items such as trim/derived-asset waveform, transpose/capo, tags/folders and offline sync are not complete and must be explicitly triaged during Stage 8 planning; this stage marker does not imply they already exist. Sync/server/ML remain deferred. No room-acoustics implementation is included.
 
@@ -74,7 +81,8 @@ Remaining original V1 items such as trim/derived-asset waveform, transpose/capo,
 2. Try all three + New paths, immediately Back, whitespace-only entry, and blank Tab Blocks. None should create an empty Song. Enter real content, save/reopen, and verify direct opening for a single component versus the overview for multiple components.
 3. Confirm visiting Songs does not reorder them. Edit title/chords/tab/notes or attach a recording and verify that Song moves to the top.
 4. Try Song-side recording attachment, multiple takes, play/seek/back ten seconds, and both timeline handles while paused/playing. Verify repeating bounds, full-range normal playback, and background/interruption behavior.
-5. Check More → Metronome and Settings → Dark Mode, including relaunch. Give feedback before Stage 8 planning resumes.
+5. Test continuous tab growth on each string, whole-block collapse, simple ASCII paste and save/reopen on iPhone.
+6. Check More → Metronome and Settings → Dark Mode, including relaunch. Give feedback before Stage 8 planning resumes.
 
 ## Later DSP tools — room-acoustics profiling (idea only)
 

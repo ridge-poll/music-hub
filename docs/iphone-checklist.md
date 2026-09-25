@@ -100,3 +100,14 @@ This section supersedes the older standalone-note and explicit A/B workflow step
 - Background/interrupt playback while applying/playing a region; verify pause and reliable manual resume. Reopen a recording: region resets to full length. Check speaker/headphones; automated tests do not certify native clip edges or route latency.
 - More → Settings → Dark Mode. Inspect Songs, all three editors, workspace, recording lists/playback, tuner and metronome. Relaunch and verify the preference remains.
 - Continue the Stage 5 keyboard and Stage 6 Listen for BPM device checks above where not already accepted. **Do not advance Stage 8 until feedback on this revision.**
+
+
+## Continuous-tab refinement — 0.7.2
+
+- Upgrade in place with existing multi-block tabs. Verify every string’s content and saved annotations; opening/migration alone must not reorder Songs.
+- Type `7h9` starting in the last position of each of the six strings. It should continue on that same string in a new block below, with keyboard/caret visible. Opening bars occur only at the top, closing bars only in the final block.
+- Backspace across a continuation boundary. It must return to the same string above. Erase the final block’s last content: the block should collapse. Repeat with a note on a different string in that block: it must remain. An empty first block never disappears.
+- Space across the last unused position, forward Delete, selection clear, cursor dragging, undo/redo, emoji/composition, portrait/landscape and increased system text. All six rows stay aligned; no horizontal scrolling.
+- Paste one long text run and a simple six-row labeled ASCII example; verify all characters/strings across continuations. Copy the app’s entire rendered tab and paste into a new tab. Save/reopen and confirm exact slot contents.
+- Add/auto-create blank blocks in a new tab, then leave with no content/title: no Song should be saved.
+- Stage 8 remains deferred. Export is individual human-readable content; Backup will be a single complete-library restorable ZIP under More through iOS Files.

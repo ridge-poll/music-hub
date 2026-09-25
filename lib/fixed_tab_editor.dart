@@ -3,81 +3,106 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'fixed_tab.dart';
 
-/// Overwrite only character slots; protect labels, separators and newlines.
+/// Keep six strings continuous while protecting the visual block structure.
 class TabOverwriteFormatter extends TextInputFormatter {
-  TabOverwriteFormatter({this.onOverflow});
-  final VoidCallback? onOverflow;
   @override
   TextEditingValue formatEditUpdate(
     TextEditingValue oldValue,
     TextEditingValue newValue,
   ) {
     if (oldValue.text == newValue.text) return newValue;
-    final chars = oldValue.text.characters.toList();
-    final offsets = <int>[0];
-    for (final char in chars) {
-      offsets.add(offsets.last + char.length);
+    final layout = FixedTabLayout.read(oldValue.text);
+    if (layout == null) return oldValue;
+    final start = oldValue.selection.start.clamp(0, oldValue.text.length);
+    final end = oldValue.selection.end.clamp(start, oldValue.text.length);
+    // Undo/redo supplies a complete prior editor value. Accept a canonical
+    // fixed-width layout directly instead of misreading it as one backspace.
+    // Ordinary insertions/deletions break that layout and follow slot editing.
+    final restored = FixedTabLayout.read(newValue.text);
+    final replacementLength =
+        newValue.text.length - oldValue.text.length + end - start;
+    final selectedSpace =
+        end > start &&
+        replacementLength == 1 &&
+        start < newValue.text.length &&
+        newValue.text[start] == ' ';
+    if (restored != null &&
+        restored.render() == newValue.text &&
+        !selectedSpace) {
+      return newValue;
     }
-    final slots = <int>[];
-    var column = 0;
-    for (var i = 0; i < chars.length; i++) {
-      if (chars[i] == '\n') {
-        column = 0;
-        continue;
-      }
-      if (column >= 2 && column < tabColumns + 2) slots.add(i);
-      column++;
-    }
-    if (slots.isEmpty) return oldValue;
-    var start = oldValue.selection.start.clamp(0, oldValue.text.length);
-    var end = oldValue.selection.end.clamp(start, oldValue.text.length);
+    final location = layout.locate(start);
+    var row = location.row, position = location.position;
     final delta = newValue.text.length - oldValue.text.length;
-    String inserted;
+    final backspace =
+        start == end && delta < 0 && newValue.selection.start < start;
     if (start == end && delta < 0) {
-      // Native backspace moves the caret left; forward Delete leaves it still.
-      if (newValue.selection.start < start) {
-        start = math.max(0, start + delta);
+      // Crossing a visual boundary stays on this string. An empty final block
+      // collapses before deleting any content in its predecessor.
+      final inLast = position >= layout.length - tabColumns;
+      if (backspace &&
+          inLast &&
+          layout.blockCount > 1 &&
+          layout.lastBlockEmpty) {
+        layout.removeLastBlock();
+        position = math.min(position, layout.length);
       } else {
-        end = math.min(oldValue.text.length, end - delta);
+        if (backspace) position = math.max(0, position - 1);
+        if (position < layout.length && (!backspace || location.position > 0)) {
+          layout.rows[row][position] = '-';
+        }
+        if (backspace &&
+            inLast &&
+            layout.blockCount > 1 &&
+            layout.lastBlockEmpty) {
+          layout.removeLastBlock();
+          position = math.min(position, layout.length);
+        }
       }
-      inserted = '';
     } else {
       final count = delta + end - start;
       if (count < 0 || start + count > newValue.text.length) return oldValue;
-      inserted = newValue.text.substring(start, start + count);
-    }
-    var index = slots.indexWhere((i) => offsets[i] >= start);
-    if (index < 0) index = slots.length;
-    for (final i in slots) {
-      if (offsets[i] >= start && offsets[i] < end) chars[i] = '-';
-    }
-    var cursor = start;
-    for (final char in inserted.characters) {
-      if (char == '\r') continue;
-      if (char == '\n') {
-        index = ((index ~/ tabColumns) + 1) * tabColumns;
-        continue;
+      final inserted = newValue.text.substring(start, start + count);
+      layout.clearSelection(start, end);
+      final pasted =
+          FixedTabLayout.read(inserted)?.rows ?? asciiPasteRows(inserted);
+      if (pasted != null) {
+        final width = pasted.first.length;
+        if (width > 0) layout.ensurePosition(position + width - 1);
+        for (var r = 0; r < 6; r++) {
+          for (var c = 0; c < width; c++) {
+            layout.rows[r][position + c] = pasted[r][c];
+          }
+        }
+        position += width;
+      } else {
+        for (final char in inserted.characters) {
+          if (char == '\r') continue;
+          if (char == '\n') {
+            final block = position ~/ tabColumns;
+            row++;
+            position = (block + (row == 6 ? 1 : 0)) * tabColumns;
+            row %= 6;
+            layout.ensurePosition(position);
+            continue;
+          }
+          layout.ensurePosition(position);
+          if (char != ' ' || layout.rows[row][position] != '-') {
+            layout.rows[row][position] = char;
+          }
+          position++;
+        }
       }
-      if (index >= slots.length) {
-        onOverflow?.call();
-        return oldValue;
+      // Typing at the end opens the next continuation, ready for the next key.
+      if (inserted.isNotEmpty && pasted == null) {
+        layout.ensurePosition(position);
       }
-      // Space advances through an empty dash; elsewhere it remains literal.
-      final slot = slots[index++];
-      if (char != ' ' || chars[slot] != '-') chars[slot] = char;
-    }
-    if (inserted.isNotEmpty) {
-      final charIndex = index < slots.length ? slots[index] : slots.last + 1;
-      cursor = chars.take(charIndex).join().length;
-    } else {
-      final slot = slots.indexWhere((i) => offsets[i] >= start);
-      cursor = slot >= 0
-          ? offsets[slots[slot]]
-          : offsets[slots.last] + chars[slots.last].length;
     }
     return TextEditingValue(
-      text: chars.join(),
-      selection: TextSelection.collapsed(offset: cursor),
+      text: layout.render(),
+      selection: TextSelection.collapsed(
+        offset: layout.offsetFor(row, position),
+      ),
     );
   }
 }
@@ -135,19 +160,7 @@ class FixedTabEditor extends StatelessWidget {
               enableSuggestions: false,
               smartDashesType: SmartDashesType.disabled,
               smartQuotesType: SmartQuotesType.disabled,
-              inputFormatters: [
-                TabOverwriteFormatter(
-                  onOverflow: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Add a Tab Block for more space. This entry was not applied.',
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ],
+              inputFormatters: [TabOverwriteFormatter()],
               decoration: const InputDecoration(
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.all(12),

@@ -23,19 +23,10 @@ class TabDocument {
   String annotations;
   bool get hasContent =>
       annotations.trim().isNotEmpty ||
-      text.split('\n').any((line) {
-        if (line.length >= 3 && line[1] == '|' && line.endsWith('|')) {
-          return line
-              .substring(2, line.length - 1)
-              .replaceAll('-', '')
-              .trim()
-              .isNotEmpty;
-        }
-        return line.trim().isNotEmpty;
-      });
+      (FixedTabLayout.read(text)?.hasContent ?? text.trim().isNotEmpty);
 
   String encode() => jsonEncode({
-    'formatVersion': 3,
+    'formatVersion': 4,
     'id': id,
     'arrangementId': arrangementId,
     'text': text,
@@ -44,20 +35,22 @@ class TabDocument {
   factory TabDocument.decode(String content, int revision) {
     final data = jsonDecode(content) as Map<String, dynamic>;
     final version = data['formatVersion'];
-    if (version != 1 && version != 2 && version != 3) {
+    if (version != 1 && version != 2 && version != 3 && version != 4) {
       throw const FormatException('Unsupported tab format');
     }
     final raw = version == 1 ? _migrate(data) : data['text'] as String;
-    final fitted = version == 3
+    final fitted = version == 3 || version == 4
         ? (raw, data['annotations'] as String? ?? '')
         : fitLegacyTab(raw);
     return TabDocument(
       id: data['id'] as String,
       arrangementId: data['arrangementId'] as String,
       revision: revision,
-      text: fitted.$1,
+      text: version == 4
+          ? fitted.$1
+          : (FixedTabLayout.read(fitted.$1)?.render() ?? fitted.$1),
       annotations: fitted.$2,
-      migrated: version != 3,
+      migrated: version != 4,
     );
   }
 }

@@ -1,6 +1,6 @@
 # Music Hub
 
-A local-first music workspace for iOS and Android, with iPhone as the lead test device. Version 0.7.1 centers the app on Songs: a musician’s notepad with local recording, tuner and metronome tools.
+A local-first music workspace for iOS and Android, with iPhone as the lead test device. Version 0.7.2 centers the app on Songs: a musician’s notepad with local recording, tuner and metronome tools.
 
 ## Song sheets
 
@@ -22,9 +22,11 @@ Songs autosave locally and have an explicit Save action. Performance mode offers
 
 ## Tabs
 
-Open a song and tap **Tab**. Each string has 40 fixed character positions, fitted to the phone width with a monospaced font. Type to overwrite dashes; backspace restores a dash and moves left. Space over an empty position advances. Labels and line lengths stay fixed. **+ Tab Block** adds another six-string block; scrolling is vertical only.
+Open a song and tap **Tab**, or start with **+ New → Tab**. Six continuous strings wrap into 40-position visual blocks fitted to the phone. Typing overwrites dashes and automatically continues on the same string below. Only the first block has opening bars; only the final block has closing bars. Scrolling is vertical only.
 
-Tabs retain local autosave and song/arrangement ownership. Older long ASCII rows continue into additional blocks; free-form text outside six-string blocks remains editable under Saved annotations. There is no musical validation or history system. See [the roadmap](docs/roadmap.md).
+Backspace restores dashes and moves left; space over an empty position advances. Backspacing in a fully empty final block collapses it, but content on any string protects the block. The first block is never removed. **+ Tab Block** remains available. Long plain text and simple complete six-row ASCII paste wrap without musical interpretation.
+
+Tabs retain local autosave and Song ownership. Existing blocks join into continuations without losing text; older annotations remain under Saved annotations. [The roadmap](docs/roadmap.md) records later **Export** (individual readable content) versus **Backup** (one restorable complete-library ZIP under More, using iOS Files). Neither Stage 8 feature is implemented yet.
 
 ## Songs and creation
 
