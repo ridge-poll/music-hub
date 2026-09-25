@@ -140,20 +140,11 @@ class PerformanceSheet extends StatelessWidget {
       height: 1.65,
       color: Theme.of(context).colorScheme.onSurface,
     );
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(
-        width: math.max(
-          MediaQuery.sizeOf(context).width - 48,
-          sheetWidth(context, text, style) + 2,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (final line in text.split('\n')) _line(context, line, style),
-          ],
-        ),
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final line in text.split('\n')) _line(context, line, style),
+      ],
     );
   }
 
@@ -162,7 +153,6 @@ class PerformanceSheet extends StatelessWidget {
     var cursor = 0;
     for (final match in chordMarker.allMatches(line)) {
       spans.add(TextSpan(text: line.substring(cursor, match.start)));
-      final raw = match.group(0)!;
       final chord = match.group(1)!;
       spans.add(
         WidgetSpan(
@@ -170,7 +160,10 @@ class PerformanceSheet extends StatelessWidget {
           child: Semantics(
             label: 'Chord $chord',
             child: Container(
-              width: sheetWidth(context, raw, style),
+              constraints: BoxConstraints(
+                maxWidth: math.max(1, MediaQuery.sizeOf(context).width - 48),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 2),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.primaryContainer,
                 borderRadius: BorderRadius.circular(6),
@@ -189,11 +182,11 @@ class PerformanceSheet extends StatelessWidget {
       cursor = match.end;
     }
     spans.add(TextSpan(text: line.substring(cursor)));
-    // Literal blank lines have real height. Horizontal scroll preserves columns.
+    // Preserve explicit newlines while reflowing each lyric line to the viewport.
     return Text.rich(
       TextSpan(children: line.isEmpty ? [const TextSpan(text: ' ')] : spans),
       style: style,
-      softWrap: false,
+      softWrap: true,
       textDirection: TextDirection.ltr,
     );
   }

@@ -4,6 +4,7 @@ import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as path;
 import 'document.dart';
 import 'store.dart';
+import 'library_bundle.dart';
 
 class AudioDraft {
   AudioDraft({
@@ -131,6 +132,58 @@ class AudioFiles {
     } on FileSystemException {
       /* Retain redundant bytes. */
     }
+  }
+
+  Future<void> importAudio(
+    MusicStore store,
+    File source, {
+    required String title,
+    required int durationMs,
+    String? songId,
+  }) async {
+    final extension = path
+        .extension(source.path)
+        .toLowerCase()
+        .replaceFirst('.', '');
+    if (!audioExtensions.contains(extension) ||
+        durationMs <= 0 ||
+        !await source.exists() ||
+        await source.length() == 0) {
+      throw const FormatException('Unsupported or empty audio file.');
+    }
+    final hash = (await sha256.bind(source.openRead()).first).toString();
+    final relative = path.join('audio', 'objects', '$hash.$extension');
+    final asset = resolve(relative);
+    await asset.parent.create(recursive: true);
+    if (!await asset.exists()) {
+      final staged = await source.copy('${asset.path}.${ids.v4()}.pending');
+      try {
+        if ((await sha256.bind(staged.openRead()).first).toString() != hash) {
+          throw const FormatException(
+            'Audio changed during import. Please retry.',
+          );
+        }
+        if (!await asset.exists()) {
+          await staged.rename(asset.path);
+        } else {
+          await staged.delete();
+        }
+      } finally {
+        if (await staged.exists()) await staged.delete();
+      }
+    }
+    if ((await sha256.bind(asset.openRead()).first).toString() != hash) {
+      throw const FormatException('Stored audio failed verification.');
+    }
+    await store.saveRecording(
+      id: ids.v4(),
+      title: title.trim().isEmpty ? 'Imported recording' : title.trim(),
+      hash: hash,
+      relativePath: relative,
+      durationMs: durationMs,
+      createdAt: DateTime.now().toUtc().toIso8601String(),
+      songId: songId,
+    );
   }
 
   Future<void> discard(AudioDraft draft) async {

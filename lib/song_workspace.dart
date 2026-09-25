@@ -1,3 +1,4 @@
+import 'portability_screen.dart';
 import 'package:flutter/material.dart';
 import 'audio_files.dart';
 import 'audio_screen.dart';
@@ -147,6 +148,22 @@ class _SongWorkspaceScreenState extends State<SongWorkspaceScreen> {
     appBar: AppBar(
       title: Text(song.title.isEmpty ? 'Untitled song' : song.title),
       actions: [
+        if (song.revision > 0)
+          IconButton(
+            tooltip: 'Export Song',
+            icon: const Icon(Icons.file_download_outlined),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute<void>(
+                builder: (_) => SongExportScreen(
+                  store: widget.store,
+                  songId: song.id,
+                  files: widget.files,
+                ),
+              ),
+            ),
+          ),
+
         IconButton(
           tooltip: 'Rename song',
           onPressed: rename,

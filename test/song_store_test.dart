@@ -127,6 +127,7 @@ void main() {
         createdAt: '',
         songId: song.id,
       );
+      await store.db.execute('ALTER TABLE songs DROP COLUMN created_at');
       await store.db.execute('ALTER TABLE songs DROP COLUMN last_edited');
       await store.db.execute('ALTER TABLE songs DROP COLUMN edited_revision');
       await store.db.setVersion(3);

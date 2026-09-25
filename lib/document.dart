@@ -26,6 +26,7 @@ class SongDocument {
   int revision;
   // Song-row metadata and component summaries are separate from sheet content.
   String lastEdited = '';
+  String createdAt = '';
   int editedRevision = 0;
   bool hasTab = false, hasNotes = false;
   int recordingCount = 0;

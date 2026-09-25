@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'library_bundle.dart';
 import 'package:path/path.dart' as path;
 import 'package:sqflite_common/sqlite_api.dart';
 
@@ -5,6 +7,8 @@ import 'document.dart';
 import 'recording.dart';
 import 'tab_document.dart';
 import 'note.dart';
+
+part 'store_portability.dart';
 
 class MusicStore {
   MusicStore(this.db);
@@ -20,7 +24,7 @@ class MusicStore {
     final db = await f.openDatabase(
       p,
       options: OpenDatabaseOptions(
-        version: 4,
+        version: 5,
         onUpgrade: (db, old, next) async {
           if (old < 2) {
             await db.execute(
@@ -28,6 +32,11 @@ class MusicStore {
             );
             await db.execute(
               "ALTER TABLE recordings ADD COLUMN created_at TEXT NOT NULL DEFAULT ''",
+            );
+          }
+          if (old < 5) {
+            await db.execute(
+              "ALTER TABLE songs ADD COLUMN created_at TEXT NOT NULL DEFAULT ''",
             );
           }
           if (old < 4) {
@@ -68,7 +77,7 @@ class MusicStore {
           const stamp =
               'id TEXT PRIMARY KEY, owner_id TEXT NOT NULL, revision INTEGER NOT NULL, device_id TEXT NOT NULL, deleted INTEGER NOT NULL DEFAULT 0 CHECK(deleted IN (0,1))';
           await db.execute(
-            "CREATE TABLE songs ($stamp, title TEXT NOT NULL, artist TEXT NOT NULL, last_edited TEXT NOT NULL DEFAULT '', edited_revision INTEGER NOT NULL DEFAULT 0)",
+            "CREATE TABLE songs ($stamp, title TEXT NOT NULL, artist TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT '', last_edited TEXT NOT NULL DEFAULT '', edited_revision INTEGER NOT NULL DEFAULT 0)",
           );
           await db.execute(
             'CREATE TABLE arrangements ($stamp, tuning TEXT NOT NULL, capo INTEGER NOT NULL DEFAULT 0, tempo REAL)',
@@ -115,7 +124,7 @@ class MusicStore {
 
   Future<List<SongDocument>> list() async {
     final rows = await db.rawQuery(
-      '''SELECT c.content, c.revision, s.last_edited, s.edited_revision FROM chord_sheets c
+      '''SELECT c.content, c.revision, s.last_edited, s.created_at, s.edited_revision FROM chord_sheets c
       JOIN song_arrangements a ON a.arrangement_id = c.arrangement_id
       JOIN songs s ON s.id = a.song_id
       WHERE c.deleted = 0 AND a.deleted = 0 AND s.deleted = 0 AND a.is_default = 1
@@ -127,25 +136,35 @@ class MusicStore {
         r['revision'] as int,
       );
       song.lastEdited = r['last_edited'] as String;
+      song.createdAt = r['created_at'] as String;
       song.editedRevision = r['edited_revision'] as int;
       return song;
     }).toList();
     final tabs = await db.query('tab_documents', where: 'deleted=0');
     final songNotes = await notes();
     final takes = await recordings();
+    final populatedTabs = {
+      for (final r in tabs)
+        if (TabDocument.decode(
+          r['content'] as String,
+          r['revision'] as int,
+        ).hasContent)
+          r['arrangement_id'],
+    };
+    final populatedNotes = {
+      for (final n in songNotes)
+        if (n.text.trim().isNotEmpty) n.songId,
+    };
+    final counts = <String, int>{};
+    for (final take in takes) {
+      if (take.songId != null) {
+        counts.update(take.songId!, (n) => n + 1, ifAbsent: () => 1);
+      }
+    }
     for (final song in songs) {
-      song.hasTab = tabs
-          .where((r) => r['arrangement_id'] == song.arrangementId)
-          .any(
-            (r) => TabDocument.decode(
-              r['content'] as String,
-              r['revision'] as int,
-            ).hasContent,
-          );
-      song.hasNotes = songNotes.any(
-        (n) => n.songId == song.id && n.text.trim().isNotEmpty,
-      );
-      song.recordingCount = takes.where((r) => r.songId == song.id).length;
+      song.hasTab = populatedTabs.contains(song.arrangementId);
+      song.hasNotes = populatedNotes.contains(song.id);
+      song.recordingCount = counts[song.id] ?? 0;
     }
     return songs;
   }
@@ -215,6 +234,7 @@ class MusicStore {
         ...stamp,
         'title': song.title,
         'artist': song.artist,
+        'created_at': DateTime.now().toUtc().toIso8601String(),
       });
       await tx.insert('arrangements', {
         'id': song.arrangementId,
@@ -727,7 +747,11 @@ class MusicStore {
         // Migration is not a user edit. The original revision provides ordering.
         await db.update(
           'songs',
-          {'last_edited': '', 'edited_revision': note.revision},
+          {
+            'created_at': '',
+            'last_edited': '',
+            'edited_revision': note.revision,
+          },
           where: 'id=?',
           whereArgs: [song.id],
         );

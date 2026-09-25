@@ -1,3 +1,4 @@
+import 'portability_screen.dart';
 import 'song_workspace.dart';
 import 'metronome_screen.dart';
 import 'delete_action.dart';
@@ -168,7 +169,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            for (final label in ['Chords/Lyrics', 'Tab', 'Notes'])
+            for (final label in [
+              'Chords/Lyrics',
+              'Tab',
+              'Notes',
+              'Import text / ChordPro',
+            ])
               ListTile(
                 title: Text(label),
                 onTap: () => Navigator.pop(context, label),
@@ -177,7 +183,13 @@ class _LibraryScreenState extends State<LibraryScreen> {
         ),
       ),
     );
-    if (type != null && mounted) await open(SongDocument(), component: type);
+    if (type == 'Import text / ChordPro' && mounted) {
+      final song = await importText(context, widget.store);
+      if (song != null && mounted) await open(song, component: 'Chords/Lyrics');
+      refresh();
+    } else if (type != null && mounted) {
+      await open(SongDocument(), component: type);
+    }
   }
 
   Future<void> record() async {
@@ -199,6 +211,15 @@ class _LibraryScreenState extends State<LibraryScreen> {
     appBar: AppBar(
       title: Text(['Songs', 'Recordings', 'Tuner', 'More'][page]),
       actions: [
+        if (page == 1)
+          IconButton(
+            tooltip: 'Import audio',
+            icon: const Icon(Icons.file_upload_outlined),
+            onPressed: () async {
+              await importRecording(context, widget.store, widget.files);
+              refresh();
+            },
+          ),
         if (page == 0)
           TextButton.icon(
             onPressed: create,
@@ -262,6 +283,28 @@ class _LibraryScreenState extends State<LibraryScreen> {
                       builder: (_) => MetronomeScreen(store: widget.store),
                     ),
                   ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.archive_outlined),
+                  title: const Text('Back Up Music Hub'),
+                  onTap: () =>
+                      backupLibrary(context, widget.store, widget.files),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.restore),
+                  title: const Text('Restore Music Hub'),
+                  onTap: () async {
+                    if (await restoreLibrary(
+                      context,
+                      widget.store,
+                      widget.files,
+                    )) {
+                      final dark =
+                          await widget.store.setting('dark_mode') == 'true';
+                      await widget.onDarkChanged?.call(dark);
+                      refresh();
+                    }
+                  },
                 ),
                 ListTile(
                   leading: const Icon(Icons.settings_outlined),
@@ -808,7 +851,7 @@ class _PerformanceScreenState extends State<PerformanceScreen>
     with WidgetsBindingObserver {
   final scroll = ScrollController();
   Timer? timer;
-  double size = 26;
+  double size = 18;
   double speed = 24;
   bool playing = false;
   bool wakeFailed = false;
@@ -892,7 +935,7 @@ class _PerformanceScreenState extends State<PerformanceScreen>
       actions: [
         IconButton(
           tooltip: 'Smaller text',
-          onPressed: size > 18
+          onPressed: size > 8
               ? () => setState(() {
                   size -= 2;
                 })
@@ -901,7 +944,7 @@ class _PerformanceScreenState extends State<PerformanceScreen>
         ),
         IconButton(
           tooltip: 'Larger text',
-          onPressed: size < 42
+          onPressed: size < 32
               ? () => setState(() {
                   size += 2;
                 })

@@ -1,54 +1,55 @@
-# Verification — 25 September 2026, version 0.7.2
+# Verification — 25 September 2026, V1 (1.0.0+10)
 
-## Passed
+## Results
 
-- Flutter static analysis: no issues.
-- 73 pure Dart tests covering authored documents, SQLite persistence/upgrades, revisions/stale writes, tombstones, immutable recordings/drafts, tuner DSP/tracking, metronome synthesis, tempo estimation, notes and practice-loop coordinates.
-- 31 Flutter-run tests covering existing song/recording/tuner/prototype flows, fixed-position editing and narrow-screen rendering, tab save/reopen, metronome lifecycle, microphone BPM capture/application/cancellation, notes workflow and A/B playback controls.
-- Formatting and diff whitespace checks.
+- **Flutter analyzer: no issues.**
+- **83 pure Dart tests passed** against authored models, actual SQLite databases/files, DSP and playback-coordinate logic.
+- **34 Flutter tests passed** covering UI workflows, fixed-width tab editing, mocked microphone/player lifecycle and the new file-operation UI. **117 tests total.**
+- Performance Mode additionally rendered at iPhone size with real fonts for visual inspection; this is a widget preview, not an iPhone capture.
+- Formatting and `git diff --check` passed.
+- `flutter pub get` completed with the versioned lockfile. No tuner DSP parameters changed.
 
-## Continuous fixed-width tabs
+## Stage 8 checks
 
-Formatter checks cover overflow on all six strings without changing the active string, automatic closing-bar relocation, Unicode/grapheme slots, long plain-text paste, basic six-row ASCII paste and copied continuation text. Backspace checks cover return across a boundary, an empty trailing block collapsing without deleting the previous block’s last character, another string preventing collapse, and the first block always surviving. Forward Delete, space advancement and selection clearing retain the slot structure.
+Real ZIP/SQLite round trips retain exact chords/tab/notes/annotations, stable Song/document/Recording/asset IDs, titles, dates, logical edit order, preferences, multiple recordings attached to a Song and independent recordings. Tests restore into both the same and a separate library, repeat restore without duplicates, and verify subsequent edits advance recency. Human-readable archive payloads are inspected directly; there is no database file in the ZIP.
 
-The keyboard widget test grows a continuation, verifies the active string/caret, undoes/redoes the complete growth, deletes the final continuation content and checks collapse without dismissing the keyboard. A render-level check at 320 logical pixels with 2× system text verifies every row of a two-block document remains on one visual line and within the field width. A phone-sized SQLite/editor test appends a continuation, saves and reopens it. The inspected `screenshots/tab-fixed.png` shows the first opening bars and final closing bars with no intermediate bars.
+Corruption tests cover unsafe/duplicate paths, symlinks, extra files, missing audio, altered content, unsupported format versions, duplicate identities, missing Song relationships, invalid dates/preferences and invalid document references. Preparation leaves the live library unchanged. Changed staged audio is rejected at commit. A forced SQLite trigger failure rolls back replacement and removes newly installed audio. An empty/deleted library round-trips without resurrecting deleted content. Unfinished drafts block backup/restore explicitly.
 
-Format-3 fixed blocks migrate to format-4 continuous strings while retaining all slots, identities and annotations. Existing grid/ASCII migration checks retain arbitrary text, Unicode and multiline annotations. Migration saves leave Song lastEdited unchanged. All saved data stays local; no export/backup feature was added.
+Text tests cover exact plain-text preservation, empty imports, simple ChordPro metadata/chords/chorus conversion and retention of unknown directives. Audio-file tests cover byte/extension preservation, deduplication and rejection of empty input. Native codec decoding and Files dialogs are outside these pure tests.
 
-These tests exercise Flutter text input and a fake keyboard, not the physical iOS keyboard. The current [iPhone checklist](iphone-checklist.md) covers finger selection, caret scrolling, composition, paste and undo/redo on the actual device.
+UI tests verify file-save cancellation is not reported as success, successful text export contains the exact text, failed export shows an error, restore displays its contents and requires confirmation, cancel preserves the current library, and confirmed restore replaces it. OS dialogs are injected fakes; filesystem and database operations are real. Performance Mode tests verify 8–32 bounds, long-line wrapping and only vertical Scrollables. Normal metronome tests assert Listen for BPM is absent.
 
-## BPM listening
+A 500-Song fixture validates list ordering and snapshot completeness while repeated reads leave createdAt/lastEdited/edit order unchanged. Component summaries now use maps/sets instead of per-Song full-list scans. This is not a maximum-size device benchmark; backup size bounds are documented separately.
 
-Synthetic 12-second rhythmic signals at 60, 83, 100, 120, 137, 180 and 220 BPM are tested at 16/22.05/44.1 kHz with added noise, with estimates within two BPM in those cases. Silence, steady tones, random noise and short clips reject estimates. These fixtures establish deterministic behavior, not accuracy on arbitrary music.
+## Existing behavior retained
 
-Widget tests feed split PCM chunks through a fake recorder into the actual isolate estimator, verify explicit Use BPM application, and check permission denial, background cancellation, no automatic restart and recorder disposal. The existing metronome lifecycle/preferences and sample-positioned WAV tests still pass. Returning from microphone use reconfigures the native playback session before metronome start.
+- SQLite upgrade fixtures from versions 1, 2, 3 and 4 to version 5 preserve content. Existing Song creation dates that were never stored remain unknown; newly created Songs receive dates. Old saved-history tables remain removed.
+- Actual edits reorder Songs; read-only visits, identical saves and tab migration do not. First document plus Song commit atomically. Untouched/whitespace/default-tab creation leaves nothing persisted.
+- Single populated components route directly; multiple components route to the workspace. Independent recordings and multiple Song recordings remain supported. Dark Mode, confirmed swipe/detail deletion, stale-save rejection and offline local persistence remain tested.
+- Tab format 4 retains all prior grid/ASCII/fixed-block migrations. Tests cover overwrite, Unicode slots, all-six-string continuation, end bars, whole-empty-block collapse, protected nonempty strings, simple ASCII paste, annotations, undo/redo and narrow-screen rendering (including 320 logical pixels with 2× system text).
+- Recording draft safety, retry after failed save, immutable audio, permission denial, background capture finalization and player/tuner/metronome disposal/interruption are covered using local files and mocked platform endpoints. A/B tests verify native clip/repeat commands and coordinate mapping without actually playing audio.
+- Synthetic tuner/FFT/tracking and metronome timing tests still pass. Experimental BPM tests remain, but physical feedback established that arbitrary-music estimation is unreliable; the feature is hidden rather than claimed validated.
 
-The estimator uses a smoothed energy-rise onset envelope and normalized autocorrelation. [Librosa’s tempo documentation](https://librosa.org/doc/0.11.0/generated/librosa.feature.tempo.html) provides background on onset-autocorrelation tempo estimation; this app uses its own small Dart implementation, without Librosa, ML or network calls. Half/double ambiguity is exposed to the user rather than silently changing tempo.
+## Physical-device status and build limitation
 
-## Stage 7 Song-first revision
+The user explicitly validated **tuner, normal metronome, recording/playback and A/B region interaction on iPhone**. Upper-string tuner acquisition is a later refinement, especially B/high E. DSP was left unchanged in this pass.
 
-SQLite checks cover last-edited ordering across chords, tabs, notes, recording attachment and deletion. Read-only visits and identical saves retain timestamps/revisions. A first child document and its new Song commit atomically; duplicate notes and mismatched parents cannot leave partial metadata changes. Upgrade fixtures cover database versions 1, 2 and 3, including standalone notes converted into Songs, all titles/bodies retained when consolidating attached notes, existing recordings preserved, and an inert second reopen. Old fixtures were adjusted to remove the new columns before simulating an older schema.
+An unsigned native iOS build was attempted with `flutter build ios --debug --no-codesign --no-pub`. Initial Swift cache writes were blocked; after granting the necessary cache paths, Xcode dependency resolution failed with **`sandbox-exec: sandbox_apply: Operation not permitted`**. Therefore this environment did **not** complete a native iOS build or certify the newly added file-dialog plugins. CoreSimulator service access was also unavailable. No Android device build/test is claimed.
 
-Phone-sized widget workflows cover untouched and whitespace-only + New visits, default/extra blank tab blocks creating nothing, notes-only and tab-only direct opening, multi-component workspace routing, Song-side recording attachment, and Dark Mode persistence across rebuilding the app. Existing confirmed song/recording deletion, interrupted capture and microphone denial tests still pass. Test IO waits include the route/FAB animation and subsequent SQLite work.
-
-The playback test drags both real timeline handles to a 2–4-second region and verifies native clipping and repeat. Tapping at three seconds produces a one-second seek inside that clip. Dragging both handles back to the ends restores the full source and disables repeat. No second Slider or RangeSlider exists. These tests check control semantics with a fake player; they do not play actual native audio.
-
-Inspected current phone-sized renders: `workflow-library.png`, `workflow-note.png`, `song-workspace.png`, `recording-ab-loop.png`, `settings-dark.png` and `tab-fixed.png`. Other screenshots document earlier stages. These are widget renders, not captures from the user's phone.
-
-## Physical-device status
-
-The user reports Stage 6 metronome is looking good on iPhone. The Song-first Stage 7 revision needs iPhone acceptance before Stage 8. The overwrite editor and microphone BPM estimation also retain their device checklist where not yet accepted. No new native iOS/Android build or device session was performed by this tool. In particular, actual keyboard/composition behavior, music tempo estimation, microphone release/audio-session switching, native A/B boundaries and Bluetooth latency require the [iPhone checklist](iphone-checklist.md).
+Remaining acceptance: full rebuild/install over the existing iPhone app, Performance Mode sizes/wrapping, Files export/import (local and iCloud), actual audio codecs, backup/restore of the real library including longer recordings and interruption/space/cancellation behavior. Use the focused [iPhone checklist](iphone-checklist.md). No new feature stage begins automatically.
 
 ## Reproduce
 
-Using Flutter 3.47.5 / Dart 3.13.4:
+SDK used: Flutter 3.47.5 / Dart 3.13.4.
 
 ```sh
 flutter pub get
 flutter analyze
-dart test test/document_test.dart test/store_test.dart test/audio_files_test.dart test/dsp_test.dart test/pitch_tracker_test.dart test/tab_lab_model_test.dart test/tab_document_test.dart test/metronome_test.dart test/tempo_estimator_test.dart test/notes_store_test.dart test/practice_loop_test.dart
-flutter test test/widget_test.dart test/tab_lab_widget_test.dart test/tab_screen_test.dart test/metronome_screen_test.dart test/fixed_tab_test.dart test/workflow_test.dart test/bpm_listen_test.dart
+# Models, DSP, real SQLite and files:
+dart test test/document_test.dart test/store_test.dart test/audio_files_test.dart test/dsp_test.dart test/pitch_tracker_test.dart test/tab_lab_model_test.dart test/tab_document_test.dart test/metronome_test.dart test/tempo_estimator_test.dart test/notes_store_test.dart test/practice_loop_test.dart test/song_store_test.dart test/portability_test.dart
+# Flutter UI and mocked native lifecycle:
+flutter test test/widget_test.dart test/tab_lab_widget_test.dart test/tab_screen_test.dart test/metronome_screen_test.dart test/fixed_tab_test.dart test/workflow_test.dart test/bpm_listen_test.dart test/portability_screen_test.dart
 flutter run -d <your-iphone-device-id>
 ```
 
-Install over the current app to exercise migration. Tab native format advances to 3; the SQLite schema remains version 3 and uses its existing note/attachment tables. No history storage, audio rewriting, server, import/export or room profiling is introduced.
+SQLite schema: **5**. Tab document format: **4**. Portable ZIP format: **1**. No backend, sync, new DSP tuning, full notation importer or additional feature stage was introduced.

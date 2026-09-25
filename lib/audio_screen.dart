@@ -1,3 +1,4 @@
+import 'portability_screen.dart';
 import 'delete_action.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -77,6 +78,19 @@ class _SongRecordingsScreenState extends State<SongRecordingsScreen> {
         widget.song.title.isEmpty ? 'Song recordings' : widget.song.title,
       ),
       actions: [
+        IconButton(
+          tooltip: 'Import audio',
+          icon: const Icon(Icons.file_upload_outlined),
+          onPressed: () async {
+            await importRecording(
+              context,
+              widget.store,
+              widget.files,
+              songId: widget.song.id,
+            );
+            if (mounted) setState(() => generation++);
+          },
+        ),
         IconButton(
           tooltip: 'Song workspace',
           onPressed: () => Navigator.pop(context, 'workspace'),
@@ -930,7 +944,24 @@ class _PlaybackScreenState extends State<PlaybackScreen>
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Recording')),
+    appBar: AppBar(
+      title: const Text('Recording'),
+      actions: [
+        IconButton(
+          tooltip: 'Export recording',
+          icon: const Icon(Icons.file_download_outlined),
+          onPressed: () async {
+            await player.pause();
+            if (!context.mounted) return;
+            await exportAudio(
+              context,
+              widget.files.resolve(widget.recording.relativePath),
+              widget.recording.title,
+            );
+          },
+        ),
+      ],
+    ),
     body: SafeArea(
       child: ListView(
         padding: const EdgeInsets.all(24),

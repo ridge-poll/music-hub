@@ -1,95 +1,87 @@
-# Delivery sequence
+# Music Hub roadmap
 
-## Current stage: Stage 7 — musician workflow
+## Current stage: Stage 8 — V1 finishing pass (1.0.0)
 
-Status: **Stage 7 workflow simplification with continuous-tab refinement (0.7.2) is implemented and awaiting iPhone testing.** Songs are now the home and organizational object. Stage 5 fixed-width tabs and Stage 6 on-device BPM estimation remain in place. No Stage 8 features are being added until the user tests this revision and decides the next scope.
+**Implementation complete; final Stage 8 iPhone acceptance remains.** V1 is a musician’s notepad + recorder + useful on-device DSP tools. Feature development stops here. The next action is testing this build on the existing iPhone library, not beginning another feature stage.
+
+The user has validated the tuner, normal metronome, recording/playback and A/B boundary interaction on the physical iPhone. Stage 7 and continuous-tab feedback was positive. The new Files import/export/backup/restore flows and Performance Mode changes still need the focused [iPhone checklist](iphone-checklist.md). Automated results and native-build limitations are in [verification](verification.md).
 
 ## Stage 1 — complete: chords → local save → reopen → performance
 
-- One continuous plain-text editor, paste/select/undo/redo, optional `{Chord}` styling, preserved spaces and section labels.
-- Local SQLite autosave, explicit Save, legacy document conversion and one-tap performance mode with font sizing, scrolling and keep-awake.
-- Saved-version/history UI and storage removed at the user's request in 0.3. Migration drops old versions and reclaims database space; current songs remain. Unsaved stale edits are rejected in place rather than overwriting current content.
-- Confirmed deletion from swipe-revealed trash buttons and detail screens. Ordered tombstones prevent resurrection. Deleting a song leaves its recordings unattached; deleting a recording hides it without breaking shared immutable audio assets.
+- One plain-text sheet with copy/paste, undo/redo, exact saved whitespace, optional `{Chord}` highlighting and normal local autosave.
+- Performance Mode now **reflows at screen edges, scrolls vertically only, and offers sizes 8–32 (default 18)**. The authored text is unchanged; the ordinary editing view can still scroll sideways for manual alignment. Auto-scroll and screen-awake remain.
+- Saved-version history and recovery UI/storage were removed at the user’s request. Stale unsaved edits are rejected in place, not used to overwrite newer content. No document history has returned.
+- Swipe/detail deletion asks for confirmation and uses ordered tombstones. Song deletion deletes its documents and detaches recordings. Audio remains immutable.
 
 ## Stage 2 — complete and iPhone-validated: record → save → playback
 
-One-tap recording, live input level, pause/resume/stop, durable unfinished-take drafts, immutable content-addressed audio, playback/seek and song attachment rows. The user reports the phone workflow works well. Unfinished audio drafts remain as protection for interrupted captures; these are not saved song versions.
+Low-friction capture, pause/resume/stop, local save, playback/seek/back ten seconds and Song attachments. Interrupted captures retain durable unfinished-take drafts; those are not saved document versions. Saved audio is content-addressed and never edited in place.
 
-## Stage 3 — iPhone-tested; tuner refinements implemented
+## Stage 3 — complete and iPhone-validated: tuner
 
-- One-tap Tuner from primary navigation; microphone use only while the tuner is active.
-- PCM16 microphone stream, local isolate-based YIN pitch detection and Hann-windowed FFT.
-- Visible ±200-cent scale. Six pitch-name-only circular controls in two headstock columns; numeric string/octave labels remain elsewhere.
-- Temporal confidence/level gating, short evidence confirmation, median/log smoothing, target hysteresis, and stronger requirements for decay/harmonic jumps. A held estimate is labeled and expires after 650 ms without fresh reliable pitch.
-- Standard/Drop D presets and persistent custom six-string tuning; A4 = 440 Hz.
-- Expandable frequency, periodicity confidence, input level and live spectrum. Harmonic guides are labeled multiples of the fundamental, not independently identified partials.
-- Silence/noise gating; background/interruption stops listening, with explicit restart.
-- Synthetic-tone, decaying/noisy-signal, lock/switch behavior, FFT and UI checks. Refined tracking still needs real-guitar comparison; no claim of parity with commercial tuners.
-- Swipe backgrounds now appear only while revealed and share the card clipping boundary; recording spacing is outside that boundary.
+- On-device YIN pitch detection and FFT, ±200-cent display, headstock arrangement of six pitch-name circles, persistent configurable tuning and expandable technical measurements.
+- Confidence/level gating, temporal smoothing, note tracking and harmonic-jump resistance remain as tested. **No DSP parameters changed in Stage 8.**
+- The user reports occasional difficulty acquiring the upper three strings unless played loudly. This is a later investigation, particularly B/high E; see deferred work below.
 
-## Stage 4 — complete: interaction study and user decision
+## Stage 4 — complete: throwaway tab interaction study
 
-The fretboard, fret-first keypad, active-string keypad and thumbwheel prototypes were tested by the user on iPhone. Their qualitative finding was that specialized input added unnecessary complexity. The initial choice was ordinary editable text cells; the final Stage 5 revision simplifies this further to one plain-text ASCII document. No quantitative scores or ranking are inferred. Tab lab has been removed from app navigation; its source and [study guide](tab-lab.md) remain historical prototypes, separate from production storage.
+The user tested fretboard, fret-first keypad, active-string keypad and thumbwheel variants on iPhone and chose a much simpler text direction. No quantitative results are inferred. Tab Lab is absent from V1 navigation; its historical prototypes and [study guide](tab-lab.md) remain separate from production storage.
 
-## Stage 5 — refined: continuous six-string tab, fixed-width overwrite
+## Stage 5 — complete: continuous six-string overwrite tab
 
-- One continuous six-string document displayed in 40-position chunks. The first block shows string labels/opening bars; subsequent blocks are unlabeled continuations. Only the final block has closing bars. Monospaced, fitted to the screen, vertical scrolling only.
-- Typing overwrites slots. At a string’s end, another six-row continuation is created automatically and the caret continues on **that same string**, with closing bars moved to the new final block. No beats, rhythm or musical interpretation.
-- Backspace restores dashes and moves left along the same string, including across visual boundaries. Forward Delete restores a dash in place. Space over a dash advances without changing it. Selection deletion preserves the structure.
-- Backspacing in a completely empty trailing block collapses it, placing the caret at the prior block’s end and restoring its closing bars. A block containing anything on any of its six strings is retained. The first block always exists. + Tab Block remains as an optional manual action.
-- Long plain text wraps along its current string. Simple complete six-row labeled ASCII paste is supported, retaining characters and padding short rows with dashes. Copying the app’s rendered continuation text also works. No general-purpose tab/notation parser is added.
-- Native format 4 preserves song/arrangement ownership, autosave, revisions and annotations. Existing format-3 fixed blocks join into continuous strings without losing slots; earlier grid/ASCII migrations still preserve annotations. Format conversion does not update Song lastEdited. Empty/default continuations still do not create a new Song.
-- Actual iPhone keyboard, caret scrolling, paste and collapse behavior require acceptance; widget tests cover the editing rules and narrow-screen rendering.
+- Six continuous strings, presented in 40-position screen-width blocks. Only the first block has labels/opening bars; only the final block has closing bars. Monospaced, vertical scrolling only.
+- Typing replaces slots and continues on the same string in a new block. Backspace restores dashes and moves left; forward Delete restores a dash; space over a dash advances. No musical parsing, beat assignment or notation validation.
+- Backspacing into a completely empty trailing six-string block collapses it. Content on any string protects the block; the first block always remains. Optional + Tab Block remains.
+- Simple labeled six-row ASCII paste and copied continuation text wrap without format-specific infrastructure. No Ultimate Guitar-specific parser.
+- Native tab format 4 preserves IDs, Song/arrangement ownership, exact content and annotations. Previous grid, ASCII and fixed-block migrations retain content without changing Song recency. Blank/default continuations do not create a new Song.
 
-## Stage 6 — iPhone-validated metronome; BPM listening added
+## Stage 6 — complete and iPhone-validated: metronome
 
-- BPM 40–240, tap tempo, 1–12 beats per bar, denominator 2/4/8 and normal/accented/silent beats. Local settings persist.
-- Sample-positioned native audio loop; changes restart on beat one. BPM counts the displayed note unit. Foreground-only playback stops on exit/background/interruption and requires explicit restart.
-- **Listen for BPM** stops metronome playback, captures 12 seconds of microphone PCM, then analyzes entirely on-device in an isolate. It uses energy-rise onsets and normalized autocorrelation, not ML or network services.
-- Offers a candidate tempo and valid half/double choices. Nothing changes until **Use … BPM** is tapped; applying does not start playback. Weak/nonperiodic input shows no estimate. Audio is temporary in memory and is not saved.
-- Capture stops on cancellation, exit, background or interruption. A capture timeout prevents indefinite listening. This is a simple pulse estimator: mixed music, syncopation and changing tempo can yield ambiguous/wrong estimates. Real music/device validation remains pending.
+- BPM 40–240, tap tempo, time signature, accents/muting and saved preferences.
+- Native sample-positioned playback; stops on exit/background/interruption and requires explicit restart.
+- **Automatic microphone BPM detection is hidden from all V1 navigation.** Physical testing found it unreliable. Experimental implementation/tests remain for later work; Stage 8 does not attempt to fix it.
 
-## Stage 7 — current: Song-first musician’s notepad
+## Stage 7 — complete: Song-first workflow
 
-Completed in this revision:
+- Home is the compact Songs list. Logical edit order implements stable most-recently-edited sorting; `lastEdited` records the edit date. Viewing, unchanged saves and tab-format migration do not change recency.
+- Each Song supports one chords/lyrics document, one tab, one notes document and any number of recordings. Any subset is valid. One populated component opens directly; multiple components open the workspace. The folder action returns direct editors to the workspace.
+- + New → Chords/Lyrics / Tab / Notes is lazy. Untouched editors, whitespace-only new text and default blank tabs save nothing. The first meaningful edit creates the Song and its document atomically.
+- Existing standalone notes became notes-only Songs; multiple attached notes were consolidated with text/titles retained. There is no separate top-level Notes destination.
+- Bottom navigation remains **Songs | Recordings | Tuner | More**. More contains Metronome, Back Up Music Hub, Restore Music Hub and Settings. Dark Mode persists.
+- Independent recordings remain supported. Recording or adding/importing a recording from the Song side attaches it naturally; multiple takes can belong to one Song.
+- One timeline shows playback progress and two region handles. Full range plays normally; moving a boundary inward loops the selected practice region. The user has validated recording/playback/A-B interaction on iPhone.
 
-- **Songs is home.** Compact horizontal cards show title and populated components, sorted by most recent actual edit. Song metadata stores `lastEdited`; the persisted logical edit counter provides stable ordering without trusting wall-clock time. Opening a Song, viewing documents, saving identical content or converting a stored tab format does not mark it edited.
-- A Song has one chords/lyrics document, one ASCII tab, one notes document and zero or more recordings. Any subset is valid. A single populated component opens directly; multiple components open a minimal workspace. The folder button in a direct editor opens the workspace to add other components. Performance mode remains one tap from a populated chord sheet or workspace.
-- **+ New → Chords/Lyrics / Tab / Notes.** Editors begin in memory. No Song is saved for an untouched visit, whitespace-only new text, or default blank tab blocks. A meaningful document or title edit creates the Song and its first document atomically. Autosave and explicit Save remain.
-- Existing standalone notes migrate to notes-only Songs, keeping their titles and exact bodies. Multiple notes already attached to a Song are combined into its one notes document with every old title/body retained. Migration does not invent edit timestamps. Song deletion now deletes its notes along with chords/tabs; recordings remain independently available. Confirmed swipe/detail deletion remains.
-- Bottom navigation: **Songs | Recordings | Tuner | More**. More contains Metronome and Settings. Dark Mode is saved locally. Notes is no longer a separate destination. Promotional/dashboard prompts and recording-to-note/tab shortcuts are removed.
-- Independent recording remains under Recordings. From a Song’s Recordings screen, record a new take or use **+** to add an existing unattached recording. A Song supports multiple takes. Playback retains play/pause, seek, back ten seconds, attachment and confirmed deletion.
-- One playback timeline shows played/unplayed portions, the playhead and two thin region boundaries. Full-width boundaries mean normal playback. Dragging either boundary inward immediately selects a repeating practice region; returning both to the edges restores normal playback. Native clip/repeat, minimum 200 ms, session-local bounds and immutable original audio remain. There are no Set A/Set B, Apply Loop, Clear Loop or separate whole-take-repeat controls.
-- Interrupted audio capture still keeps an unfinished take for recovery. No document history has returned.
+## Stage 8 — implemented: portability + stabilization
 
-Pending: actual iPhone acceptance of the revised home/creation workflow, note migration, Dark Mode, and boundary-handle interaction/native looping. Automated checks are recorded in [verification](verification.md).
+### Export and conservative import
 
-## Stage 8 — deferred until iPhone feedback: import/export and V1 cleanup/stabilization
+- Song workspace → Export Song: chords/lyrics and notes as UTF-8 plain text, tabs as ASCII text with any retained annotations. Attached audio can also be exported there. Recording playback has its own Export action.
+- Audio exports retain their normal file extension and bytes. Native save dialogs allow choosing the destination in Files.
+- + New → Import text / ChordPro accepts UTF-8 `.txt`, `.cho`, `.chopro`, `.pro`, `.chordpro`. A deliberately small ChordPro subset recognizes title/artist, simple inline chords and chorus delimiters; unknown directives remain literal text. Empty text imports create nothing.
+- Import audio is available in Recordings and a Song’s Recordings screen. The native player checks readability/duration before an immutable copy is saved locally. Actual codec support depends on the device.
+- Tab interoperability stays with existing copy/paste. **No Guitar Pro, MusicXML, Ultimate Guitar parser, or large format framework in V1.**
 
-After Stage 7 iPhone acceptance, plan two distinct features:
+### Complete-library backup / restore
 
-- **Backup** lives under **More**. It creates a **single restorable ZIP** of the complete library through the normal iOS **Files** interface. The restore path must preserve all Song documents, metadata, recording relationships and audio assets. This is full-library preservation/restoration, not individual content export.
-- **Export** gets individual human-readable Song/audio content out of Music Hub. Keep its purpose and interface distinct from Backup. Agree on faithful interchange for free-form tabs before promising equivalence; original priorities include ChordPro import/export, Guitar Pro import and MusicXML import/view.
+- More → **Back Up Music Hub** creates one `MusicHub-Backup-YYYY-MM-DD.zip` through the native Files save dialog.
+- Transparent version-1 manifest, readable Song text and ordinary audio, stable Song/document/Recording IDs, created dates, lastEdited, logical edit order, tuning metadata, preferences and recording relationships. SQLite is not the backup format.
+- Restore stages and validates version, paths, checksums, sizes, identities and relationships before showing replacement confirmation. All audio is installed before a single transaction replaces active library metadata. Failure before commit leaves the existing library intact.
+- Restore is replacement, not merge. Back up the current library first if it should be retained. Cancel leaves it unchanged. Draft takes must be saved/discarded before backup or restore so they cannot be silently omitted.
+- Backups include the complete **active saved** library, not deleted tombstones or unreferenced audio. Old audio is retained locally rather than destructively garbage-collected during restore. Details and limits: [backup format](backup-format.md).
 
-Neither feature is implemented in 0.7.2. Include backup/restore round trips, error handling, accessibility and Android/device audio testing in Stage 8 cleanup/stabilization planning.
+### Hardening
 
-Remaining original V1 items such as trim/derived-asset waveform, transpose/capo, tags/folders and offline sync are not complete and must be explicitly triaged during Stage 8 planning; this stage marker does not imply they already exist. Sync/server/ML remain deferred. No room-acoustics implementation is included.
+- Database version 5 adds Song creation dates. Legacy dates that were never recorded remain unknown (`""`), rather than fabricated. Existing content, IDs and recency survive migration.
+- Song-list component summaries use maps/sets rather than repeatedly scanning all documents for each Song. A 500-Song fixture checks ordering, snapshots and read-only metadata stability.
+- Tested archive round trips into the same and a separate library, repeated restore, corruption/missing audio/broken links/unsupported versions, cancellation, forced transaction rollback, text fidelity, import failure handling and prior migrations/continuations.
+- Existing autosave, stale writes, lazy creation, deletion, offline file persistence and mocked audio lifecycle tests remain in the validation suite. Native Files and upgrade validation still require the iPhone pass; no Android hardware validation is claimed.
 
-## Next acceptance
+## Explicitly deferred beyond this V1
 
-1. Upgrade over the current app without uninstalling. Check existing chords, tabs, notes and recordings; standalone notes should now appear as Songs, and attached note text should be consolidated without loss.
-2. Try all three + New paths, immediately Back, whitespace-only entry, and blank Tab Blocks. None should create an empty Song. Enter real content, save/reopen, and verify direct opening for a single component versus the overview for multiple components.
-3. Confirm visiting Songs does not reorder them. Edit title/chords/tab/notes or attach a recording and verify that Song moves to the top.
-4. Try Song-side recording attachment, multiple takes, play/seek/back ten seconds, and both timeline handles while paused/playing. Verify repeating bounds, full-range normal playback, and background/interruption behavior.
-5. Test continuous tab growth on each string, whole-block collapse, simple ASCII paste and save/reopen on iPhone.
-6. Check More → Metronome and Settings → Dark Mode, including relaunch. Give feedback before Stage 8 planning resumes.
+- **Tuner high-string acquisition/sensitivity:** inspect input level, confidence, fundamental/harmonic behavior, frequency-dependent thresholds and FFT/pitch estimation using real B/high-E recordings before adjusting parameters.
+- **Automatic BPM detection:** improve acquisition and reliability against actual music; keep it hidden until it earns a useful result.
+- **Room acoustics experiments:** potentially play a swept sine/chirp, record the response and estimate impulse response, reverberation/decay time, frequency-dependent decay and prominent resonances/modes. Expose raw impulse response/spectrum in a technical view only if measurements are defensible. Distinguish room behavior from phone speaker/microphone response and establish repeatability first.
+- Deeper DSP tools, transcription and expensive audio analysis. Later neural work uses asynchronous jobs and separate candidates with explicit promotion to authored content.
+- Nonessential items from the original outline—trim/derived-audio editing, waveform tools, transpose/capo UI, tags/folders, sync/backend, broader interchange—are deferred, not implied complete by the V1 label.
 
-## Later DSP tools — room-acoustics profiling (idea only)
-
-Explore phone-based characterization of the surrounding acoustic environment, potentially by playing a known swept-sine/chirp excitation and recording the response to estimate a room impulse response. A musician-facing view could expose reverberation/decay time, frequency-dependent decay and prominent resonances/room modes, with raw impulse response and spectrum in an expandable technical view.
-
-This is firmly later-roadmap research: no excitation playback, response capture, deconvolution, measurement claims or UI are implemented now. Future feasibility work must distinguish room behavior from the phone speaker/microphone response and assess repeatability before presenting measurements.
-
-## Product boundaries
-
-Guitar-first; six-string configurable tuning. All deterministic DSP stays on-device. Backend deferred until remote access/sync requires it; later neural workloads are async jobs with candidate results and explicit promotion. Audio is only recorded or explicitly imported by the user. No lookup/scraping, staff authoring, ML, source separation, fingering optimization, multi-instrument generalization, analytics, social/sharing, GP export or ChordPro synchronized playback.
+No additional integrations, social features, speculative abstractions or new feature stage are started in this pass. Audio is only recorded or explicitly imported by the user; no lookup or scraping.

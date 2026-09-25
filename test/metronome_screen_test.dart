@@ -164,6 +164,7 @@ void main() {
         ),
       );
       await flush();
+      expect(find.text('Listen for BPM'), findsNothing);
       expect(find.text('101'), findsOneWidget);
       expect(reopened.starts, isEmpty);
       expect(tester.takeException(), isNull);

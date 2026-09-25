@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'metronome.dart';
 import 'metronome_audio.dart';
 import 'store.dart';
-import 'bpm_listen_screen.dart';
 
 class MetronomeScreen extends StatefulWidget {
   const MetronomeScreen({super.key, required this.store, this.audio});
@@ -146,15 +145,6 @@ class _MetronomeScreenState extends State<MetronomeScreen>
     }
   }
 
-  Future<void> listenForBpm() async {
-    await stop();
-    if (!mounted) return;
-    final bpm = await Navigator.of(
-      context,
-    ).push<int>(MaterialPageRoute(builder: (_) => const BpmListenScreen()));
-    if (mounted && bpm != null) change(bpm: bpm);
-  }
-
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.inactive ||
@@ -244,13 +234,6 @@ class _MetronomeScreenState extends State<MetronomeScreen>
                   ),
                 ),
                 const SizedBox(height: 24),
-                Center(
-                  child: TextButton.icon(
-                    onPressed: listenForBpm,
-                    icon: const Icon(Icons.mic_none),
-                    label: const Text('Listen for BPM'),
-                  ),
-                ),
                 const Center(child: Text('Time signature')),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,

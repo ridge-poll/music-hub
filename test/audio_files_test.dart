@@ -115,6 +115,7 @@ void main() {
       );
       await store.db.execute('ALTER TABLE recordings DROP COLUMN duration_ms');
       await store.db.execute('ALTER TABLE recordings DROP COLUMN created_at');
+      await store.db.execute('ALTER TABLE songs DROP COLUMN created_at');
       await store.db.execute('ALTER TABLE songs DROP COLUMN last_edited');
       await store.db.execute('ALTER TABLE songs DROP COLUMN edited_revision');
       await store.db.execute('PRAGMA user_version = 1');
