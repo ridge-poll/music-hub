@@ -18,7 +18,7 @@ More lyrics here
 
 Optional `{Am}` notation gets a simple highlight while editing and a rounded label in performance mode. It remains literal text in storage. `[Intro]` is just text. Import supports a small ChordPro subset; export uses ordinary UTF-8 text. Unknown imported directives remain literal text.
 
-Songs autosave locally and have an explicit Save action. Performance Mode wraps to the screen with vertical scrolling only, font sizes 8–32 (default 18), screen-awake and automatic/manual scrolling. Older line-based songs are converted on read with lyrics/chords retained. Saved-version history has been removed: the database upgrade deletes historical copies while retaining current songs and normal autosave.
+Songs autosave locally and have an explicit Save action. Performance Mode wraps to the screen with vertical scrolling only, font sizes 6–28 (default 12), screen-awake and automatic/manual scrolling. Older line-based songs are converted on read with lyrics/chords retained. Saved-version history has been removed: the database upgrade deletes historical copies while retaining current songs and normal autosave.
 
 ## Tabs
 

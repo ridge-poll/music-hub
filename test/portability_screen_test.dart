@@ -71,15 +71,15 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         tester.widget<PerformanceSheet>(find.byType(PerformanceSheet)).size,
-        18,
+        12,
       );
-      for (var i = 0; i < 5; i++) {
+      for (var i = 0; i < 3; i++) {
         await tester.tap(find.byTooltip('Smaller text'));
         await tester.pump();
       }
       expect(
         tester.widget<PerformanceSheet>(find.byType(PerformanceSheet)).size,
-        8,
+        6,
       );
       expect(
         tester
@@ -92,13 +92,13 @@ void main() {
         isNull,
       );
       await capturePreview(tester, 'v1-performance-small');
-      for (var i = 0; i < 12; i++) {
+      for (var i = 0; i < 11; i++) {
         await tester.tap(find.byTooltip('Larger text'));
         await tester.pump();
       }
       expect(
         tester.widget<PerformanceSheet>(find.byType(PerformanceSheet)).size,
-        32,
+        28,
       );
       expect(
         tester

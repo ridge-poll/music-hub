@@ -4,12 +4,12 @@
 
 **Implementation complete; final Stage 8 iPhone acceptance remains.** V1 is a musician’s notepad + recorder + useful on-device DSP tools. Feature development stops here. The next action is testing this build on the existing iPhone library, not beginning another feature stage.
 
-The user has validated the tuner, normal metronome, recording/playback and A/B boundary interaction on the physical iPhone. Stage 7 and continuous-tab feedback was positive. The new Files import/export/backup/restore flows and Performance Mode changes still need the focused [iPhone checklist](iphone-checklist.md). Automated results and native-build limitations are in [verification](verification.md).
+The user has validated the tuner, normal metronome, recording/playback and A/B boundary interaction on the physical iPhone. On 26 September, the user validated import, the tab editor, Performance Mode wrapping and its expanded size control on `ab19cbd`. Final font-only polish sets a 6–28 range with default 12; wrapping is unchanged. Remaining acceptance is text/audio export, backup creation, restore, iCloud Files behavior and longer-recording backups/restores; see the focused [iPhone checklist](iphone-checklist.md). Automated results and native-build limitations are in [verification](verification.md).
 
 ## Stage 1 — complete: chords → local save → reopen → performance
 
 - One plain-text sheet with copy/paste, undo/redo, exact saved whitespace, optional `{Chord}` highlighting and normal local autosave.
-- Performance Mode now **reflows at screen edges, scrolls vertically only, and offers sizes 8–32 (default 18)**. The authored text is unchanged; the ordinary editing view can still scroll sideways for manual alignment. Auto-scroll and screen-awake remain.
+- Performance Mode now **reflows at screen edges, scrolls vertically only, and offers sizes 6–28 (default 12)**. The authored text is unchanged; the ordinary editing view can still scroll sideways for manual alignment. Auto-scroll and screen-awake remain.
 - Saved-version history and recovery UI/storage were removed at the user’s request. Stale unsaved edits are rejected in place, not used to overwrite newer content. No document history has returned.
 - Swipe/detail deletion asks for confirmation and uses ordered tombstones. Song deletion deletes its documents and detaches recordings. Audio remains immutable.
 

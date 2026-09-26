@@ -851,7 +851,7 @@ class _PerformanceScreenState extends State<PerformanceScreen>
     with WidgetsBindingObserver {
   final scroll = ScrollController();
   Timer? timer;
-  double size = 18;
+  double size = 12;
   double speed = 24;
   bool playing = false;
   bool wakeFailed = false;
@@ -935,7 +935,7 @@ class _PerformanceScreenState extends State<PerformanceScreen>
       actions: [
         IconButton(
           tooltip: 'Smaller text',
-          onPressed: size > 8
+          onPressed: size > 6
               ? () => setState(() {
                   size -= 2;
                 })
@@ -944,7 +944,7 @@ class _PerformanceScreenState extends State<PerformanceScreen>
         ),
         IconButton(
           tooltip: 'Larger text',
-          onPressed: size < 32
+          onPressed: size < 28
               ? () => setState(() {
                   size += 2;
                 })

@@ -1,5 +1,9 @@
 # Verification — 25 September 2026, V1 (1.0.0+10)
 
+## Font-only polish — 26 September 2026
+
+Performance Mode now defaults to 12 with bounds 6–28. Wrapping and scrolling implementation are unchanged. The targeted portability/Performance Mode test file passes all 3 tests, including default/minimum/maximum sizes, disabled boundary controls and vertical-only scrolling. Analyzer reports no issues; formatting and diff checks pass. The 117-test full-suite results below are from the Stage 8 finishing pass.
+
 ## Results
 
 - **Flutter analyzer: no issues.**
@@ -17,7 +21,7 @@ Corruption tests cover unsafe/duplicate paths, symlinks, extra files, missing au
 
 Text tests cover exact plain-text preservation, empty imports, simple ChordPro metadata/chords/chorus conversion and retention of unknown directives. Audio-file tests cover byte/extension preservation, deduplication and rejection of empty input. Native codec decoding and Files dialogs are outside these pure tests.
 
-UI tests verify file-save cancellation is not reported as success, successful text export contains the exact text, failed export shows an error, restore displays its contents and requires confirmation, cancel preserves the current library, and confirmed restore replaces it. OS dialogs are injected fakes; filesystem and database operations are real. Performance Mode tests verify 8–32 bounds, long-line wrapping and only vertical Scrollables. Normal metronome tests assert Listen for BPM is absent.
+UI tests verify file-save cancellation is not reported as success, successful text export contains the exact text, failed export shows an error, restore displays its contents and requires confirmation, cancel preserves the current library, and confirmed restore replaces it. OS dialogs are injected fakes; filesystem and database operations are real. Performance Mode tests verify 6–28 bounds, long-line wrapping and only vertical Scrollables. Normal metronome tests assert Listen for BPM is absent.
 
 A 500-Song fixture validates list ordering and snapshot completeness while repeated reads leave createdAt/lastEdited/edit order unchanged. Component summaries now use maps/sets instead of per-Song full-list scans. This is not a maximum-size device benchmark; backup size bounds are documented separately.
 
@@ -36,7 +40,7 @@ The user explicitly validated **tuner, normal metronome, recording/playback and 
 
 An unsigned native iOS build was attempted with `flutter build ios --debug --no-codesign --no-pub`. Initial Swift cache writes were blocked; after granting the necessary cache paths, Xcode dependency resolution failed with **`sandbox-exec: sandbox_apply: Operation not permitted`**. Therefore this environment did **not** complete a native iOS build or certify the newly added file-dialog plugins. CoreSimulator service access was also unavailable. No Android device build/test is claimed.
 
-Remaining acceptance: full rebuild/install over the existing iPhone app, Performance Mode sizes/wrapping, Files export/import (local and iCloud), actual audio codecs, backup/restore of the real library including longer recordings and interruption/space/cancellation behavior. Use the focused [iPhone checklist](iphone-checklist.md). No new feature stage begins automatically.
+Physical update, 26 September: the user tested `ab19cbd` on iPhone and validated import, the tab editor, Performance Mode wrapping and the expanded size control. Font-only polish now uses 6–28 with default 12, with wrapping unchanged. Remaining acceptance: text/audio export through Files, backup creation, restore, iCloud Files behavior and backups/restores with longer recordings. Use the focused [iPhone checklist](iphone-checklist.md). No new feature stage begins automatically.
 
 ## Reproduce
 
