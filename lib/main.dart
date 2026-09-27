@@ -1,3 +1,4 @@
+import 'rhythm_screen.dart';
 import 'portability_screen.dart';
 import 'song_workspace.dart';
 import 'metronome_screen.dart';
@@ -281,6 +282,17 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     context,
                     MaterialPageRoute<void>(
                       builder: (_) => MetronomeScreen(store: widget.store),
+                    ),
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.equalizer),
+                  title: const Text('Rhythm'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (_) => RhythmScreen(store: widget.store),
                     ),
                   ),
                 ),

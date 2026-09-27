@@ -1,17 +1,25 @@
-# Verification — 25 September 2026, V1 (1.0.0+10)
+# Verification — 26 September 2026, Rhythm (1.1.0+11)
 
 ## Font-only polish — 26 September 2026
 
-Performance Mode now defaults to 12 with bounds 6–28. Wrapping and scrolling implementation are unchanged. The targeted portability/Performance Mode test file passes all 3 tests, including default/minimum/maximum sizes, disabled boundary controls and vertical-only scrolling. Analyzer reports no issues; formatting and diff checks pass. The 117-test full-suite results below are from the Stage 8 finishing pass.
+Performance Mode now defaults to 12 with bounds 6–28. Wrapping and scrolling implementation are unchanged. The targeted portability/Performance Mode test file passes all 3 tests, including default/minimum/maximum sizes, disabled boundary controls and vertical-only scrolling. Analyzer reports no issues; formatting and diff checks pass. The complete suite below was rerun after the Rhythm implementation; Performance Mode remains unchanged.
 
 ## Results
 
 - **Flutter analyzer: no issues.**
-- **83 pure Dart tests passed** against authored models, actual SQLite databases/files, DSP and playback-coordinate logic.
-- **34 Flutter tests passed** covering UI workflows, fixed-width tab editing, mocked microphone/player lifecycle and the new file-operation UI. **117 tests total.**
+- **92 pure Dart tests passed** against authored models, actual SQLite databases/files, DSP and playback-coordinate logic.
+- **39 Flutter tests passed** covering UI workflows, fixed-width tab editing, mocked microphone/player lifecycle and the new file-operation UI. **131 tests total.**
 - Performance Mode additionally rendered at iPhone size with real fonts for visual inspection; this is a widget preview, not an iPhone capture.
 - Formatting and `git diff --check` passed.
 - `flutter pub get` completed with the versioned lockfile. No tuner DSP parameters changed.
+
+## Rhythm checks
+
+Exact-fraction model tests cover every division 1–16, recursive quarter/triplet structure, immutable edits, merge, depth/leaf limits, malformed saved data and common-cycle sample positions for 3:4, 5:7 and 7:11. PCM tests check deterministic output, four distinct voices, accents, silence, bounded dense mixes and byte-identical repeated cycles.
+
+Flutter tests cover wheel preview/cancel/commit, nested focus, merge/undo/redo, two-row playback commands, actual SQLite save/reopen, failed-write retry and Back protection, corrupt-state protection, stop/background/interruption/disposal and a 320-pixel iOS wheel with selection-feedback calls. Real backup ZIP round trips include Rhythm preferences; malformed trees are rejected before restore. These tests use a fake audio endpoint and cannot validate physical timing or tactile haptics.
+
+No new native dependencies or database migration were added. The previously attempted native build limitation below remains; no successful native build is claimed for this pass. Rhythm requires the focused physical-iPhone checks before acceptance.
 
 ## Stage 8 checks
 
@@ -38,7 +46,7 @@ A 500-Song fixture validates list ordering and snapshot completeness while repea
 
 The user explicitly validated **tuner, normal metronome, recording/playback and A/B region interaction on iPhone**. Upper-string tuner acquisition is a later refinement, especially B/high E. DSP was left unchanged in this pass.
 
-An unsigned native iOS build was attempted with `flutter build ios --debug --no-codesign --no-pub`. Initial Swift cache writes were blocked; after granting the necessary cache paths, Xcode dependency resolution failed with **`sandbox-exec: sandbox_apply: Operation not permitted`**. Therefore this environment did **not** complete a native iOS build or certify the newly added file-dialog plugins. CoreSimulator service access was also unavailable. No Android device build/test is claimed.
+During the earlier Stage 8 pass, an unsigned native iOS build was attempted with `flutter build ios --debug --no-codesign --no-pub`. Initial Swift cache writes were blocked; after granting the necessary cache paths, Xcode dependency resolution failed with **`sandbox-exec: sandbox_apply: Operation not permitted`**. Therefore this environment did **not** complete a native iOS build or certify the newly added file-dialog plugins. CoreSimulator service access was also unavailable. No Android device build/test is claimed.
 
 Physical update, 26 September: the user tested `ab19cbd` on iPhone and validated import, the tab editor, Performance Mode wrapping and the expanded size control. Font-only polish now uses 6–28 with default 12, with wrapping unchanged. Remaining acceptance: text/audio export through Files, backup creation, restore, iCloud Files behavior and backups/restores with longer recordings. Use the focused [iPhone checklist](iphone-checklist.md). No new feature stage begins automatically.
 
@@ -50,10 +58,10 @@ SDK used: Flutter 3.47.5 / Dart 3.13.4.
 flutter pub get
 flutter analyze
 # Models, DSP, real SQLite and files:
-dart test test/document_test.dart test/store_test.dart test/audio_files_test.dart test/dsp_test.dart test/pitch_tracker_test.dart test/tab_lab_model_test.dart test/tab_document_test.dart test/metronome_test.dart test/tempo_estimator_test.dart test/notes_store_test.dart test/practice_loop_test.dart test/song_store_test.dart test/portability_test.dart
+dart test test/document_test.dart test/store_test.dart test/audio_files_test.dart test/dsp_test.dart test/pitch_tracker_test.dart test/tab_lab_model_test.dart test/tab_document_test.dart test/metronome_test.dart test/tempo_estimator_test.dart test/notes_store_test.dart test/practice_loop_test.dart test/song_store_test.dart test/portability_test.dart test/rhythm_test.dart
 # Flutter UI and mocked native lifecycle:
-flutter test test/widget_test.dart test/tab_lab_widget_test.dart test/tab_screen_test.dart test/metronome_screen_test.dart test/fixed_tab_test.dart test/workflow_test.dart test/bpm_listen_test.dart test/portability_screen_test.dart
+flutter test test/widget_test.dart test/tab_lab_widget_test.dart test/tab_screen_test.dart test/metronome_screen_test.dart test/fixed_tab_test.dart test/workflow_test.dart test/bpm_listen_test.dart test/portability_screen_test.dart test/rhythm_screen_test.dart
 flutter run -d <your-iphone-device-id>
 ```
 
-SQLite schema: **5**. Tab document format: **4**. Portable ZIP format: **1**. No backend, sync, new DSP tuning, full notation importer or additional feature stage was introduced.
+SQLite schema: **5**. Tab document format: **4**. Portable ZIP format: **1**. Rhythm preference format: **1**. The requested Rhythm extension is complete pending iPhone validation. No backend, sync, tuner DSP tuning or full notation importer was introduced.

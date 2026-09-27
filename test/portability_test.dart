@@ -1,3 +1,4 @@
+import 'package:music_hub/rhythm.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:archive/archive_io.dart';
@@ -54,6 +55,17 @@ void main() {
       await files.draftAudio(draft).writeAsBytes([1, 2, 3, i]);
       await files.save(store, draft);
     }
+    await store.setSetting(
+      'rhythm',
+      jsonEncode(
+        RhythmPattern(
+          rows: [
+            RhythmRow().divide([], 7),
+            RhythmRow(sound: RhythmSound.kick).cycleHit([]).divide([], 11),
+          ],
+        ).toJson(),
+      ),
+    );
     await store.setSetting('dark_mode', 'true');
     await store.setSetting(
       'metronome',
@@ -180,6 +192,10 @@ void main() {
       (a) =>
           modifyManifest(a, (m) => m['songs'][0]['lastEdited'] = 'not-a-date'),
       (a) => modifyManifest(a, (m) => m['settings']['dark_mode'] = 'invalid'),
+      (a) => modifyManifest(
+        a,
+        (m) => m['settings']['rhythm'] = '{"formatVersion":999}',
+      ),
       (a) {
         final f = a.findFile('MusicHub Backup/songs/${song.id}/chords.txt')!;
         a.removeFile(f);

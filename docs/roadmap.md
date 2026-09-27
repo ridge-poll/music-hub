@@ -1,10 +1,26 @@
 # Music Hub roadmap
 
-## Current stage: Stage 8 — V1 finishing pass (1.0.0)
+## Current focus: requested Rhythm extension (1.1.0) — awaiting iPhone testing
 
-**Implementation complete; final Stage 8 iPhone acceptance remains.** V1 is a musician’s notepad + recorder + useful on-device DSP tools. Feature development stops here. The next action is testing this build on the existing iPhone library, not beginning another feature stage.
+**Rhythm implemented; stop here for physical-iPhone testing.** This is the user-requested addition after the V1 finishing pass, not a broader feature stage. Existing V1 workflows remain unchanged, and the outstanding Stage 8 Files/backup checks remain on the acceptance list.
 
 The user has validated the tuner, normal metronome, recording/playback and A/B boundary interaction on the physical iPhone. On 26 September, the user validated import, the tab editor, Performance Mode wrapping and its expanded size control on `ab19cbd`. Final font-only polish sets a 6–28 range with default 12; wrapping is unchanged. Remaining acceptance is text/audio export, backup creation, restore, iCloud Files behavior and longer-recording backups/restores; see the focused [iPhone checklist](iphone-checklist.md). Automated results and native-build limitations are in [verification](verification.md).
+
+## Rhythm — recursive subdivision tool implemented
+
+- **More → Rhythm** opens one locally saved pattern, separate from the conventional metronome. Bottom navigation stays Songs | Recordings | Tuner | More. No Song arrangement timeline or multi-pattern library is added.
+- Every row begins as one full-cycle block. Its immutable tree stores equal child divisions (2–16 children); **Divide into 1 is a no-op**. Leaf state is rest/hit/accent. Exact rational start/duration comes from the parent chain, never a global snap grid or an LCM-sized array.
+- Tap cycles · rest → ○ hit → ● accent. Hold selects without changing the hit. Selected controls offer Divide and sibling-group Merge; Undo/Redo covers structural edits, hits and row removal within this editor session.
+- Divide uses a Cupertino number wheel with every integer 1–16, native iOS selection feedback, preview and Cancel/Divide. Preview changes neither storage nor playback until committed.
+- Dividing retains the first hit and leaves new siblings off. Merge replaces the parent’s entire sibling/subtree group with one block retaining its first leaf’s hit. Undo restores the previous structure. Nested divisions open a labeled Focused block view; Whole cycle returns to the overview. Focus block makes narrow branches editable without a giant global grid.
+- Each row chooses Click, Kick, Snare or Hi-hat. Sounds are small deterministic synthesized voices, not imported samples or drum kits.
+- BPM 40–240, tap tempo, Play/Stop and 1–16 **pulses per cycle**. Cycle duration is pulse count × 60/BPM; subdivision is independent of pulse count and time signature. Four pulses is only a convenient default, not a 4/4 model constraint.
+- Every row is mixed into a single mono PCM loop in an isolate. Exact fractional onsets are rounded once to the nearest sample in the common cycle; native looping uses one clock for simultaneous polyrhythms. UI timers do not trigger sounds. Committed edits during playback restart at the beginning; preview does not restart playback.
+- Saved state includes tempo, pulse count, row IDs/sounds and the complete subdivision trees. Serialized autosaves preserve ordering; failed writes keep edits visible and Back retries rather than discarding them. Corrupt saved state is not silently replaced with defaults. Backup/restore includes the Rhythm workspace and validates it before commit.
+- Defensive bounds: eight rows, 256 leaf blocks per row, nesting depth eight. These bound rendering/storage work; they do not quantize positions onto a shared grid. In-memory Undo/Redo is capped at 40 edits and is not saved-version history.
+- Performance Mode remains **6–28, default 12, wrapping and vertical scrolling only**. Automatic BPM detection remains hidden. No tuner DSP or metronome representation changes.
+
+**Next:** test simultaneous 3:4, 5:7 and 7:11 on iPhone, loop timing over several minutes, wheel/haptics, nested focus/merge, rapid edits/stop, interruptions and saved-state recovery. See [Rhythm details](rhythm.md), [verification](verification.md) and the [iPhone checklist](iphone-checklist.md). Stop after this implementation; no MIDI, piano roll, samples, effects, mixing console, recording into Rhythm or further integrations.
 
 ## Stage 1 — complete: chords → local save → reopen → performance
 
@@ -47,7 +63,7 @@ The user tested fretboard, fret-first keypad, active-string keypad and thumbwhee
 - Each Song supports one chords/lyrics document, one tab, one notes document and any number of recordings. Any subset is valid. One populated component opens directly; multiple components open the workspace. The folder action returns direct editors to the workspace.
 - + New → Chords/Lyrics / Tab / Notes is lazy. Untouched editors, whitespace-only new text and default blank tabs save nothing. The first meaningful edit creates the Song and its document atomically.
 - Existing standalone notes became notes-only Songs; multiple attached notes were consolidated with text/titles retained. There is no separate top-level Notes destination.
-- Bottom navigation remains **Songs | Recordings | Tuner | More**. More contains Metronome, Back Up Music Hub, Restore Music Hub and Settings. Dark Mode persists.
+- Bottom navigation remains **Songs | Recordings | Tuner | More**. More contains Metronome, Rhythm, Back Up Music Hub, Restore Music Hub and Settings. Dark Mode persists.
 - Independent recordings remain supported. Recording or adding/importing a recording from the Song side attaches it naturally; multiple takes can belong to one Song.
 - One timeline shows playback progress and two region handles. Full range plays normally; moving a boundary inward loops the selected practice region. The user has validated recording/playback/A-B interaction on iPhone.
 

@@ -192,6 +192,7 @@ void main() {
       await tester.tap(find.text('More'));
       await tester.pumpAndSettle();
       expect(find.text('Metronome'), findsOneWidget);
+      expect(find.text('Rhythm'), findsOneWidget);
       await tester.tap(find.text('Settings'));
       await tester.pumpAndSettle();
       await tester.tap(find.byType(SwitchListTile));

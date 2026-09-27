@@ -1,13 +1,26 @@
-# V1 / Stage 8 iPhone acceptance
+# Rhythm (1.1.0) + remaining V1 iPhone acceptance
 
-The user has already validated tuner, normal metronome, recording/playback and A/B region interaction. Do not retune DSP during this pass. Automatic microphone BPM detection is intentionally absent. Import, the tab editor and Performance Mode wrapping/size controls were also physically validated on `ab19cbd` (26 September). V1 remains frozen except the final font-range adjustment. Remaining handoff checks are text/audio export, backup creation, restore, iCloud Files behavior and longer-recording backups/restores.
+The user has already validated tuner, normal metronome, recording/playback and A/B region interaction. Do not retune DSP during this pass. Automatic microphone BPM detection is intentionally absent. Import, the tab editor and Performance Mode wrapping/size controls were also physically validated on `ab19cbd` (26 September). Existing V1 behavior remains frozen; the requested Rhythm tool is the only new feature. Remaining handoff checks are text/audio export, backup creation, restore, iCloud Files behavior and longer-recording backups/restores.
 
 Rebuild with `flutter pub get` and `flutter run -d <device-id>`; native file-dialog plugins require a full rebuild, not hot reload. Install over the existing app without uninstalling. The automated environment could not finish the native build because Xcode's nested sandbox was blocked.
+
+## Rhythm — new physical validation
+
+1. More → Rhythm. Tap the initial block on, Divide into 4, then turn on all four children. Add a row, choose a different sound, divide into 3 and enable all three. Play: both first hits should coincide at every cycle boundary. Repeat with 5:7 and 7:11.
+2. Listen for several minutes at slow, medium and fast BPM. Check no drift between rows, no unintended pause at the native loop boundary, and audible distinctions between rest/hit/accent and the four sounds. Compare cycle duration against the chosen BPM/pulses. Check speaker/headphones; Bluetooth adds latency and is not certified by tests.
+3. Spin the Divide wheel across all 1–16 values. Check finger targeting, subtle iOS haptics/ticks, preview and cancellation. Cancel must leave the saved pattern and current playback unchanged. Divide into 1 should change nothing.
+4. Divide the third of four blocks into three. Check Focused block/Whole cycle, tap versus hold, repeated nested divisions, sibling Merge and Undo/Redo. Whole-cycle widths should show two quarters, three twelfths and a final quarter. Merge keeps the first hit; Undo restores the complete group.
+5. Try 16 blocks on the narrow phone screen, landscape, larger text and Dark Mode. Check Focus block makes small branches usable. Verify no math or shared 77-step grid is exposed.
+6. Change BPM/pulses/sound/hits during playback: a committed edit intentionally restarts from the beginning. Dragging the BPM slider previews its number and applies on release. Rapidly edit, Stop while preparing, leave/reopen, background/lock, interrupt with a call/Siri and disconnect headphones. Audio must stop on exit/background/interruption and require explicit Play to resume. Switch Rhythm → tuner → recorder → metronome to check session recovery.
+7. Create a nested multi-row pattern, leave immediately, relaunch offline and confirm all state. Remove a row and Undo. Save errors must retain edits with Retry save. Back should not silently discard a failed save.
+8. Include a Rhythm pattern when testing backup/restore below; compare sounds, hits, tree structure, tempo and pulse count afterward. Undo history and selection/focus are session-only.
+
+Stop here after testing; send feedback before further additions.
 
 ## New UI and portability
 
 1. Open a long chords/lyrics sheet in Performance Mode. At small (6), default (12) and large (28) sizes, lines must reflow without horizontal scrolling. Check portrait/landscape, blank lines, `{Chord}` labels, auto-scroll, screen-awake and larger accessibility text. Saved/editor text should be unchanged.
-2. More → Metronome: BPM, tap tempo, time signature, accents/muting and saved preferences remain; Listen for BPM is absent. More should also show Back Up Music Hub, Restore Music Hub and Settings. Dark Mode persists after relaunch.
+2. More → Metronome: BPM, tap tempo, time signature, accents/muting and saved preferences remain; Listen for BPM is absent. More should also show Rhythm, Back Up Music Hub, Restore Music Hub and Settings. Dark Mode persists after relaunch.
 3. Song → folder/workspace → Export Song: export chords, tabs, notes and an attached recording to On My iPhone and iCloud Drive. Open the text in another app, confirming spaces, Unicode, tab alignment and saved annotations. Play the exported audio. Independent recordings export from their playback screen.
 4. Cancel a Files save and ensure it reports cancellation, not success. Check an unavailable iCloud destination or storage error leaves local content intact.
 5. **Import physically validated; optional regression only.** + New → Import text / ChordPro: choose a UTF-8 `.txt` and simple `.cho`/`.chopro` file. Check title/artist, basic chords and unknown directives retained as text. Empty/cancelled/unsupported files should create nothing. Existing tab paste is sufficient; no special website parser is expected.

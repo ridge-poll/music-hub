@@ -1,6 +1,6 @@
 # Music Hub
 
-A local-first music workspace for iOS and Android, with iPhone as the lead test device. Version 1.0.0 centers the app on Songs: a musician’s notepad with local recording, tuner and metronome tools.
+A local-first music workspace for iOS and Android, with iPhone as the lead test device. Version 1.1.0 centers the app on Songs: a musician’s notepad with local recording, tuner, metronome and recursive Rhythm tools.
 
 ## Song sheets
 
@@ -34,13 +34,21 @@ Tabs retain local autosave and Song ownership. Existing blocks join into continu
 
 **+ New** starts Chords/Lyrics, Tab or Notes. An untouched editor or blank tab template saves nothing. Meaningful text or title edits create the Song locally. Existing standalone notes become Songs on upgrade; multiple attached notes combine into the Song’s single notes document with their text retained.
 
-Navigation is **Songs | Recordings | Tuner | More**. More contains Metronome, Back Up Music Hub, Restore Music Hub and Settings, including a persistent Dark Mode switch.
+Navigation is **Songs | Recordings | Tuner | More**. More contains Metronome, Rhythm, Back Up Music Hub, Restore Music Hub and Settings, including a persistent Dark Mode switch.
 
 ## Metronome
 
 Open **More → Metronome** for 40–240 BPM, tap tempo, time signature and per-beat accents/muting. Settings persist. BPM counts the displayed note unit; changes restart the bar. Audio uses sample-positioned native playback and stops on background/exit/interruption.
 
 Automatic microphone BPM estimation is hidden from V1 following unreliable physical-device results. Experimental source/tests remain for later work; the normal metronome is iPhone-validated.
+
+## Rhythm
+
+Open **More → Rhythm** for one autosaved rhythm workspace. Each row starts as a whole-cycle block. Tap to cycle rest/hit/accent, or hold to select it without changing the hit. **Divide** opens a 1–16 number wheel with preview; divide any child again for nested rhythms. **Merge** collapses its sibling group; Undo/Redo is available. Focus block and Whole cycle keep small branches easy to edit.
+
+Choose Click, Kick, Snare or Hi-hat per row. Independent rows can divide the same cycle into 3 and 4, 5 and 7, or 7 and 11—no giant shared step grid. BPM, tap tempo and Pulses per cycle set playback speed; one mixed native PCM loop keeps the rows on the same audio clock. Edits while playing restart the cycle. State saves locally and is included in backup/restore. [Model, behavior and limits](docs/rhythm.md).
+
+Rhythm needs physical-iPhone acceptance for timing, wheel feel/haptics, simultaneous playback and interruptions. Existing V1 features remain frozen; no further feature work begins after this handoff.
 
 ## Recordings
 
@@ -82,7 +90,7 @@ flutter run -d <your-iphone-device-id>
 
 Use `flutter devices` to obtain the device ID. Do not uninstall the app to update it: install the new build over the existing app to retain the local library. Xcode 27 and Flutter are already installed on the lead development Mac. For another machine, follow [Flutter's iOS setup guide](https://docs.flutter.dev/platform-integration/ios/setup).
 
-The user has validated tuner, normal metronome, recording/playback and A/B interaction on iPhone. Stage 8 Files flows and Performance Mode refinements need the focused [phone acceptance session](docs/iphone-checklist.md). V1 feature development stops here.
+The user has validated tuner, normal metronome, recording/playback and A/B interaction on iPhone. Stage 8 Files flows and the final Performance Mode font bounds need the focused [phone acceptance session](docs/iphone-checklist.md). The requested Rhythm extension now awaits its own iPhone acceptance; development stops at this handoff.
 
 ## Checks
 

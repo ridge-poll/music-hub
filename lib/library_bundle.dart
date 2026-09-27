@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'metronome.dart';
+import 'rhythm.dart';
 
 const audioExtensions = {
   'm4a',
@@ -12,7 +13,7 @@ const audioExtensions = {
   'flac',
   'ogg',
 };
-const portableSettings = {'dark_mode', 'metronome', 'tuner_tuning'};
+const portableSettings = {'dark_mode', 'metronome', 'tuner_tuning', 'rhythm'};
 const maxTextBytes = 8 * 1024 * 1024;
 const maxLibraryTextBytes = 64 * 1024 * 1024;
 
@@ -163,6 +164,10 @@ class LibraryBundle {
       }
       if (e.key == 'dark_mode' && !['true', 'false'].contains(e.value)) {
         throw const FormatException('Invalid theme preference.');
+      }
+      if (e.key == 'rhythm') {
+        text(e.value);
+        RhythmPattern.fromJson(jsonDecode(e.value));
       }
       if (e.key == 'metronome') MetronomeSettings.fromJson(jsonDecode(e.value));
       if (e.key == 'tuner_tuning') {
