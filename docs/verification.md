@@ -1,3 +1,16 @@
+# Verification — 12 November 2026, Circle of Fifths (1.2.0+12)
+
+- **95 pure Dart tests passed**, including all existing model, SQLite/file, backup and DSP tests plus three Circle tests. Used the package test runner directly with the current package configuration; the normal `dart test` entry attempted an unavailable SQLite asset download. No dependency or lockfile changes were made by this feature.
+- **Direct Dart analyzer (`dart analyze lib test`): no issues found.**
+- New Flutter regression tests in `test/circle_screen_test.dart` cover two complete turns and reversal, minor selection, background/disposal, first-frame theme, and hold/drag/release overriding auto-scroll. **These have not run here.** Both standard Flutter invocation and its installed tool entry point were blocked by SDK cache writes (`engine.stamp` / `lockfile`). No successful current Flutter widget suite or native build is claimed.
+- Existing Flutter suite results below are historical, not verification of this change. Run the complete Flutter command below on the development Mac, adding `test/circle_screen_test.dart`.
+- Native launch backgrounds require a full rebuild, not hot reload. iOS may cache launch-screen snapshots; test a cold start after installing the new build over the existing app, without deleting the app/library.
+- No tuner DSP, Rhythm model, database or backup-format changes. Circle state is a transient utility, not authored library content.
+
+Current pure-suite command follows the historical reproduction list with `test/circle_test.dart` added. New Circle details and device checks are in the roadmap and iPhone checklist. Formatting/diff checks pass.
+
+---
+
 # Verification — 26 September 2026, Rhythm (1.1.0+11)
 
 ## Font-only polish — 26 September 2026

@@ -1,10 +1,18 @@
 # Music Hub roadmap
 
-## Current focus: requested Rhythm extension (1.1.0) — awaiting iPhone testing
+## Current focus: Circle of Fifths + touch/theme polish (1.2.0) — awaiting iPhone testing
 
-**Rhythm implemented; stop here for physical-iPhone testing.** This is the user-requested addition after the V1 finishing pass, not a broader feature stage. Existing V1 workflows remain unchanged, and the outstanding Stage 8 Files/backup checks remain on the acceptance list.
+**Implemented; stop here for testing.** The user reports being satisfied with the app after use. This does not imply that every previously listed Files/backup check has been completed.
 
-The user has validated the tuner, normal metronome, recording/playback and A/B boundary interaction on the physical iPhone. On 26 September, the user validated import, the tab editor, Performance Mode wrapping and its expanded size control on `ab19cbd`. Final font-only polish sets a 6–28 range with default 12; wrapping is unchanged. Remaining acceptance is text/audio export, backup creation, restore, iCloud Files behavior and longer-recording backups/restores; see the focused [iPhone checklist](iphone-checklist.md). Automated results and native-build limitations are in [verification](verification.md).
+- **More → Circle of Fifths:** playable major/relative-minor rings, key signatures, tonic/neighbor harmonic highlighting and Roman numerals. Center shows the selected chord and root register (such as C4). Tap plays a short synthesized triad; drag scrubs across chords.
+- **One octave per revolution**, explicitly chosen by the user. Clockwise turns raise the register and counterclockwise turns lower it. Independent turn tracking crosses the seam continuously, with root octaves 2–6 and bounded endpoints. Taps choose a chord in the current octave; octave buttons also support direct adjustment. This is fifths-order pitch classes within a register, not a seven-semitone ascent at each step.
+- Audio is generated locally, with a short envelope, cached temporary WAVs and latest-selection coalescing. Stop, backgrounding, interruptions and exit cancel playback. No new dependency, network source or library schema.
+- Startup reads the stored theme before rendering the library and disables theme interpolation. Dark is the default when no preference exists; native launch and loading backgrounds are dark. A saved Light preference still opens the library in Light mode (the native launch placeholder is intentionally dark).
+- Performance Mode auto-scroll pauses while a finger is touching the sheet, lets manual scrolling take over, and resumes from that position on release/cancel. Wrapping, 6–28 font range and default 12 remain unchanged.
+
+**Validation:** 95 pure Dart tests pass, including exact register transitions, both scrub directions/endpoints and deterministic chord PCM. Direct Dart analyzer reports no issues. Added Flutter regression tests cover scrubbing, lifecycle, initial theme and touch override; execution is blocked by this environment’s read-only Flutter SDK cache. See [verification](verification.md). Physical acceptance must check scrub responsiveness/sound, seam crossings, cold launch with both saved themes, and drag/release during auto-scroll.
+
+Existing device validation: tuner, conventional metronome, recording/playback, A/B playback, import, tab editor and Performance Mode wrapping. Outstanding Stage 8 acceptance remains text/audio export, backup creation/restore, iCloud Files behavior and longer recordings. See [iPhone checklist](iphone-checklist.md).
 
 ## Rhythm — recursive subdivision tool implemented
 

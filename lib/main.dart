@@ -1,3 +1,4 @@
+import 'circle_screen.dart';
 import 'rhythm_screen.dart';
 import 'portability_screen.dart';
 import 'song_workspace.dart';
@@ -29,21 +30,28 @@ class Bootstrap extends StatefulWidget {
 }
 
 class _BootstrapState extends State<Bootstrap> {
-  Future<(MusicStore, AudioFiles)> open() async {
+  Future<(MusicStore, AudioFiles, bool)> open() async {
     final files = AudioFiles(await getApplicationDocumentsDirectory());
     final store = await MusicStore.open(factory: databaseFactory);
-    return (store, files);
+    return (store, files, await store.setting('dark_mode') != 'false');
   }
 
-  late Future<(MusicStore, AudioFiles)> opening = open();
+  late Future<(MusicStore, AudioFiles, bool)> opening = open();
   @override
-  Widget build(BuildContext context) => FutureBuilder<(MusicStore, AudioFiles)>(
+  Widget build(
+    BuildContext context,
+  ) => FutureBuilder<(MusicStore, AudioFiles, bool)>(
     future: opening,
     builder: (context, snapshot) {
       if (snapshot.hasData) {
-        return MusicHub(store: snapshot.data!.$1, files: snapshot.data!.$2);
+        return MusicHub(
+          store: snapshot.data!.$1,
+          files: snapshot.data!.$2,
+          initialDark: snapshot.data!.$3,
+        );
       }
       return MaterialApp(
+        theme: ThemeData.dark(),
         home: Scaffold(
           body: Center(
             child: snapshot.hasError
@@ -70,24 +78,31 @@ class _BootstrapState extends State<Bootstrap> {
 }
 
 class MusicHub extends StatefulWidget {
-  const MusicHub({super.key, required this.store, required this.files});
+  const MusicHub({
+    super.key,
+    required this.store,
+    required this.files,
+    this.initialDark,
+  });
   final MusicStore store;
   final AudioFiles files;
+  final bool? initialDark;
   @override
   State<MusicHub> createState() => _MusicHubState();
 }
 
 class _MusicHubState extends State<MusicHub> {
-  bool dark = false;
+  bool dark = true;
   @override
   void initState() {
     super.initState();
-    unawaited(loadTheme());
+    dark = widget.initialDark ?? true;
+    if (widget.initialDark == null) unawaited(loadTheme());
   }
 
   Future<void> loadTheme() async {
     final value = await widget.store.setting('dark_mode');
-    if (mounted) setState(() => dark = value == 'true');
+    if (mounted) setState(() => dark = value != 'false');
   }
 
   Future<void> setDark(bool value) async {
@@ -109,6 +124,7 @@ class _MusicHubState extends State<MusicHub> {
   @override
   Widget build(BuildContext context) => MaterialApp(
     title: 'Music Hub',
+    themeAnimationDuration: Duration.zero,
     debugShowCheckedModeBanner: false,
     theme: theme(Brightness.light),
     darkTheme: theme(Brightness.dark),
@@ -286,6 +302,17 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   ),
                 ),
                 ListTile(
+                  leading: const Icon(Icons.album_outlined),
+                  title: const Text('Circle of Fifths'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (_) => const CircleScreen(),
+                    ),
+                  ),
+                ),
+                ListTile(
                   leading: const Icon(Icons.equalizer),
                   title: const Text('Rhythm'),
                   trailing: const Icon(Icons.chevron_right),
@@ -312,7 +339,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                       widget.files,
                     )) {
                       final dark =
-                          await widget.store.setting('dark_mode') == 'true';
+                          await widget.store.setting('dark_mode') != 'false';
                       await widget.onDarkChanged?.call(dark);
                       refresh();
                     }
@@ -867,6 +894,7 @@ class _PerformanceScreenState extends State<PerformanceScreen>
   double speed = 24;
   bool playing = false;
   bool wakeFailed = false;
+  final touching = <int>{};
   @override
   void initState() {
     super.initState();
@@ -895,6 +923,7 @@ class _PerformanceScreenState extends State<PerformanceScreen>
       unawaited(wake());
     } else {
       timer?.cancel();
+      touching.clear();
       setState(() {
         playing = false;
       });
@@ -910,7 +939,7 @@ class _PerformanceScreenState extends State<PerformanceScreen>
       return;
     }
     timer = Timer.periodic(const Duration(milliseconds: 50), (_) {
-      if (!scroll.hasClients) {
+      if (!scroll.hasClients || touching.isNotEmpty) {
         return;
       }
       final next = (scroll.offset + speed / 20).clamp(
@@ -966,21 +995,26 @@ class _PerformanceScreenState extends State<PerformanceScreen>
       ],
     ),
     body: SafeArea(
-      child: ListView(
-        controller: scroll,
-        padding: const EdgeInsets.fromLTRB(24, 12, 24, 120),
-        children: [
-          if (widget.song.artist.isNotEmpty)
-            Text(
-              widget.song.artist,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-          if (wakeFailed)
-            const Text(
-              'Could not keep the screen awake. Check your auto-lock setting.',
-            ),
-          PerformanceSheet(text: widget.song.text, size: size),
-        ],
+      child: Listener(
+        onPointerDown: (event) => touching.add(event.pointer),
+        onPointerUp: (event) => touching.remove(event.pointer),
+        onPointerCancel: (event) => touching.remove(event.pointer),
+        child: ListView(
+          controller: scroll,
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 120),
+          children: [
+            if (widget.song.artist.isNotEmpty)
+              Text(
+                widget.song.artist,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            if (wakeFailed)
+              const Text(
+                'Could not keep the screen awake. Check your auto-lock setting.',
+              ),
+            PerformanceSheet(text: widget.song.text, size: size),
+          ],
+        ),
       ),
     ),
     bottomNavigationBar: SizedBox(

@@ -1,6 +1,6 @@
 # Music Hub
 
-A local-first music workspace for iOS and Android, with iPhone as the lead test device. Version 1.1.0 centers the app on Songs: a musician’s notepad with local recording, tuner, metronome and recursive Rhythm tools.
+A local-first music workspace for iOS and Android, with iPhone as the lead test device. Version 1.2.0 centers the app on Songs: a musician’s notepad with local recording, tuner, metronome and recursive Rhythm tools.
 
 ## Song sheets
 
@@ -34,13 +34,19 @@ Tabs retain local autosave and Song ownership. Existing blocks join into continu
 
 **+ New** starts Chords/Lyrics, Tab or Notes. An untouched editor or blank tab template saves nothing. Meaningful text or title edits create the Song locally. Existing standalone notes become Songs on upgrade; multiple attached notes combine into the Song’s single notes document with their text retained.
 
-Navigation is **Songs | Recordings | Tuner | More**. More contains Metronome, Rhythm, Back Up Music Hub, Restore Music Hub and Settings, including a persistent Dark Mode switch.
+Navigation is **Songs | Recordings | Tuner | More**. More contains Metronome, Circle of Fifths, Rhythm, Back Up Music Hub, Restore Music Hub and Settings, including a persistent Dark Mode switch.
 
 ## Metronome
 
 Open **More → Metronome** for 40–240 BPM, tap tempo, time signature and per-beat accents/muting. Settings persist. BPM counts the displayed note unit; changes restart the bar. Audio uses sample-positioned native playback and stops on background/exit/interruption.
 
 Automatic microphone BPM estimation is hidden from V1 following unreliable physical-device results. Experimental source/tests remain for later work; the normal metronome is iPhone-validated.
+
+## Circle of Fifths
+
+Open **More → Circle of Fifths** to tap major/minor chords or scrub around the wheel. Each complete clockwise turn raises the root register one octave; counterclockwise lowers it. The center displays the chord and root octave, with a five-octave range (2–6). Key signatures and highlighted neighboring chords provide harmonic context. Sound is synthesized on-device; no network or imported samples are required.
+
+Startup loads the saved theme before showing the library, with a dark launch placeholder and dark default. Performance Mode auto-scroll yields while touching/dragging the sheet and resumes on release. The font range and vertical wrapping are unchanged. A full native rebuild is needed for the launch-screen change.
 
 ## Rhythm
 
@@ -97,15 +103,16 @@ The user has validated tuner, normal metronome, recording/playback and A/B inter
 ```sh
 flutter analyze
 # Model and real SQLite/file persistence:
-dart test test/document_test.dart test/store_test.dart test/audio_files_test.dart test/dsp_test.dart test/pitch_tracker_test.dart test/tab_document_test.dart
+dart test test/document_test.dart test/store_test.dart test/audio_files_test.dart test/dsp_test.dart test/pitch_tracker_test.dart test/tab_document_test.dart test/circle_test.dart
 # Phone-sized editing flow and mocked microphone lifecycle:
-flutter test test/widget_test.dart test/tab_screen_test.dart
+flutter test test/widget_test.dart test/tab_screen_test.dart test/circle_screen_test.dart
 ```
 
 See [verification](docs/verification.md) for results and their limits. The installed SDK is Flutter 3.47.5 / Dart 3.13.4. Keep `pubspec.lock` under version control.
 
 ## Code map
 
+- `lib/circle.dart`, `lib/circle_audio.dart` and `lib/circle_screen.dart`: continuous-register fifths wheel and local chord synthesis.
 - `lib/document.dart`: exact plain-text document format and legacy conversion.
 - `lib/sheet_view.dart`: plain-text editing, optional chord styling and performance rendering.
 - `lib/store.dart`: SQLite migrations, revisions, deletion tombstones and recording relationships.

@@ -1,3 +1,17 @@
+# Circle of Fifths + startup/scroll acceptance — 1.2.0+12
+
+Install a full rebuild over the existing app to refresh the native launch screen; retain the library.
+
+- More → Circle of Fifths: tap major and relative-minor chords; check the center chord/root octave and sound. Scrub slowly and quickly through the top seam in both directions. A full clockwise turn raises one octave; reverse lowers it. Check all five root octaves, bounded endpoints, sound latency, rapid direction changes and unwanted clicks/dropouts.
+- Check Stop, leaving the tool, locking/backgrounding, an audio interruption, headphones and speaker. Sound must not restart unexpectedly. Compare minor/major and the harmonic-cluster labels on the actual screen.
+- Save Dark Mode, fully close/reopen: no white flash. Save Light Mode and reopen: the library must start light, following a dark launch placeholder. Recheck after an ordinary app update without uninstalling.
+- Performance Mode: start auto-scroll on a long sheet, hold a finger still, drag both up and down, hold again, then release. Auto-scroll must pause throughout contact and resume at the new position. Check multiple touches, pointer cancellation, Pause and end-of-sheet behavior. Confirm vertical-only wrapping remains.
+- Run the full Flutter tests on the development Mac; this environment could run the 95 pure Dart tests and analyzer but not Flutter’s cache-writing test runner.
+
+The earlier acceptance list follows; do not interpret historical automated results as physical signoff for this update.
+
+---
+
 # Rhythm (1.1.0) + remaining V1 iPhone acceptance
 
 The user has already validated tuner, normal metronome, recording/playback and A/B region interaction. Do not retune DSP during this pass. Automatic microphone BPM detection is intentionally absent. Import, the tab editor and Performance Mode wrapping/size controls were also physically validated on `ab19cbd` (26 September). Existing V1 behavior remains frozen; the requested Rhythm tool is the only new feature. Remaining handoff checks are text/audio export, backup creation, restore, iCloud Files behavior and longer-recording backups/restores.
