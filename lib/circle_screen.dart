@@ -94,16 +94,20 @@ class _CircleScreenState extends State<CircleScreen>
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('Circle of Fifths')),
     body: SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final size = math.min(520.0, constraints.maxWidth);
-              return Center(
-                child: SizedBox(
-                  width: size,
-                  height: size,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final size = math.max(
+            0.0,
+            math.min(
+              520.0,
+              math.min(constraints.maxWidth - 32, constraints.maxHeight - 176),
+            ),
+          );
+          return Stack(
+            children: [
+              Center(
+                child: SizedBox.square(
+                  dimension: size,
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
@@ -112,125 +116,119 @@ class _CircleScreenState extends State<CircleScreen>
                         onPointerMove: (e) => move(e, size),
                         onPointerUp: end,
                         onPointerCancel: end,
-                        // Claim the drag inside the wheel so the page cannot steal scrubbing.
-                        child: GestureDetector(
-                          onPanUpdate: (_) {},
-                          child: CustomPaint(
-                            size: Size.square(size),
-                            painter: CirclePainter(
-                              chord,
-                              Theme.of(context).colorScheme,
-                            ),
+                        child: CustomPaint(
+                          size: Size.square(size),
+                          painter: CirclePainter(
+                            chord,
+                            Theme.of(context).colorScheme,
+                            fontFamily: Theme.of(
+                              context,
+                            ).textTheme.bodyMedium?.fontFamily,
                           ),
                         ),
                       ),
                       IgnorePointer(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              chord.name,
-                              style: Theme.of(context).textTheme.headlineMedium
-                                  ?.copyWith(fontWeight: FontWeight.bold),
+                        child: SizedBox(
+                          width: size * .30,
+                          height: size * .30,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  chord.name,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .headlineMedium
+                                      ?.copyWith(fontWeight: FontWeight.bold),
+                                ),
+                                Text(
+                                  chord.register,
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.titleMedium,
+                                ),
+                                Text(chord.minor ? 'minor' : 'major'),
+                              ],
                             ),
-                            Text(
-                              chord.register,
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                            Text(chord.minor ? 'minor' : 'major'),
-                          ],
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
-              );
-            },
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(
-                tooltip: 'Lower octave',
-                onPressed: chord.step - 12 >= circleMinStep
-                    ? () => select(chord.step - 12, chord.minor)
-                    : null,
-                icon: const Icon(Icons.remove),
               ),
-              Text('Octave ${chord.octave}'),
-              IconButton(
-                tooltip: 'Higher octave',
-                onPressed: chord.step + 12 <= circleMaxStep
-                    ? () => select(chord.step + 12, chord.minor)
-                    : null,
-                icon: const Icon(Icons.add),
-              ),
-              IconButton(
-                tooltip: 'Play selected chord',
-                onPressed: () => select(chord.step, chord.minor),
-                icon: const Icon(Icons.volume_up_outlined),
-              ),
-              IconButton(
-                tooltip: 'Stop sound',
-                onPressed: () => unawaited(audio.stop()),
-                icon: const Icon(Icons.stop),
-              ),
-            ],
-          ),
-          Text(
-            '${chord.name} · ${signatures[chord.index]}',
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            chord.minor
-                ? 'i · iv · v: minor     III · VI · VII: major'
-                : 'I · IV · V: major     ii · iii · vi: minor',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'Tap to hear a chord. Drag around either ring to scrub. Each clockwise turn adds an octave; counterclockwise lowers it. Root octaves 2–6.',
-            textAlign: TextAlign.center,
-          ),
-          if (error != null)
-            Text(
-              error!,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
-            ),
-          const SizedBox(height: 12),
-          // Also expose labeled, focusable controls for screen readers and keyboards.
-          ExpansionTile(
-            title: const Text('Chord names'),
-            children: [
-              Wrap(
-                alignment: WrapAlignment.center,
-                children: [
-                  for (var i = 0; i < 12; i++)
-                    for (final minor in [false, true])
-                      TextButton(
-                        onPressed: () =>
-                            select((chord.step / 12).floor() * 12 + i, minor),
-                        child: Text(
-                          minor ? '${minorNames[i]}m' : fifthNames[i],
+              if (error != null)
+                Positioned(
+                  top: 16,
+                  left: 16,
+                  right: 16,
+                  child: Text(
+                    error!,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ),
+              Positioned(
+                bottom: 16,
+                left: 16,
+                right: 16,
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 340),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          tooltip: 'Lower octave',
+                          onPressed: chord.step - 12 >= circleMinStep
+                              ? () => select(chord.step - 12, chord.minor)
+                              : null,
+                          icon: const Icon(Icons.remove),
                         ),
-                      ),
-                ],
+                        Expanded(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text('Octave ${chord.octave}'),
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Higher octave',
+                          onPressed: chord.step + 12 <= circleMaxStep
+                              ? () => select(chord.step + 12, chord.minor)
+                              : null,
+                          icon: const Icon(Icons.add),
+                        ),
+                        IconButton(
+                          tooltip: 'Play selected chord',
+                          onPressed: () => select(chord.step, chord.minor),
+                          icon: const Icon(Icons.play_arrow),
+                        ),
+                        IconButton(
+                          tooltip: 'Stop sound',
+                          onPressed: () => unawaited(audio.stop()),
+                          icon: const Icon(Icons.stop),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ],
-          ),
-        ],
+          );
+        },
       ),
     ),
   );
 }
 
 class CirclePainter extends CustomPainter {
-  CirclePainter(this.chord, this.colors);
+  CirclePainter(this.chord, this.colors, {this.fontFamily});
   final CircleChord chord;
   final ColorScheme colors;
+  final String? fontFamily;
   @override
   void paint(Canvas canvas, Size size) {
     final center = size.center(Offset.zero), radius = size.width / 2;
@@ -248,6 +246,7 @@ class CirclePainter extends CustomPainter {
           text: text,
           style: TextStyle(
             color: color,
+            fontFamily: fontFamily,
             fontSize: font,
             fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
           ),
@@ -343,5 +342,6 @@ class CirclePainter extends CustomPainter {
   bool shouldRepaint(CirclePainter oldDelegate) =>
       oldDelegate.chord.step != chord.step ||
       oldDelegate.chord.minor != chord.minor ||
-      oldDelegate.colors != colors;
+      oldDelegate.colors != colors ||
+      oldDelegate.fontFamily != fontFamily;
 }

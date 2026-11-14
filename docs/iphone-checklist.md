@@ -1,3 +1,15 @@
+# Circle repair acceptance — 1.2.1+13
+
+**Validated by the user on 14 November:** startup theme and Performance Mode touch/auto-scroll. Keep their existing behavior.
+
+- Open More → Circle of Fifths. Tap major and minor wedges: confirm audible chords and no retry error. Repeat the same chord, switch octaves, and scrub clockwise/counterclockwise across the seam.
+- Test rapid scrubbing, Play and Stop, leaving/reopening the tool, and background/interruption behavior. Stop must prevent a pending chord from starting later.
+- Confirm the wheel feels centered and comfortable, with no vertical scrolling or chord-name dropdown. Octave and Play/Stop controls should remain reachable in portrait and landscape.
+
+All 140 automated tests and Flutter analyzer pass for this repair. The native audio endpoint is mocked in tests, so listening on the iPhone remains required. Earlier checklists follow for historical context and outstanding V1 portability checks.
+
+---
+
 # Circle of Fifths + startup/scroll acceptance — 1.2.0+12
 
 Install a full rebuild over the existing app to refresh the native launch screen; retain the library.

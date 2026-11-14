@@ -1,16 +1,18 @@
 # Music Hub roadmap
 
-## Current focus: Circle of Fifths + touch/theme polish (1.2.0) — awaiting iPhone testing
+## Current focus: Circle of Fifths playback repair + simpler layout (1.2.1) — awaiting iPhone testing
 
-**Implemented; stop here for testing.** The user reports being satisfied with the app after use. This does not imply that every previously listed Files/backup check has been completed.
+**Implemented; stop here for testing.** On 14 November the user validated the startup-theme and Performance Mode touch/auto-scroll fixes on iPhone. Circle playback failed in 1.2.0; the failure is reproduced and repaired in 1.2.1. Outstanding Files/backup checks remain separate.
 
+- **Fixed screen:** the wheel is centered in the available screen, with octave down/up, Play and Stop along the bottom. No vertical scrolling, chord-name dropdown or explanatory panels. Layout adapts to small phones and landscape.
+- **Playback repair:** the isolate renderer now receives only chord data, rather than accidentally capturing the audio controller and its unsendable futures. A transport regression reproduces the previous failure and verifies actual isolate rendering, WAV loading, cached replay and Stop during preparation.
 - **More → Circle of Fifths:** playable major/relative-minor rings, key signatures, tonic/neighbor harmonic highlighting and Roman numerals. Center shows the selected chord and root register (such as C4). Tap plays a short synthesized triad; drag scrubs across chords.
 - **One octave per revolution**, explicitly chosen by the user. Clockwise turns raise the register and counterclockwise turns lower it. Independent turn tracking crosses the seam continuously, with root octaves 2–6 and bounded endpoints. Taps choose a chord in the current octave; octave buttons also support direct adjustment. This is fifths-order pitch classes within a register, not a seven-semitone ascent at each step.
 - Audio is generated locally, with a short envelope, cached temporary WAVs and latest-selection coalescing. Stop, backgrounding, interruptions and exit cancel playback. No new dependency, network source or library schema.
 - Startup reads the stored theme before rendering the library and disables theme interpolation. Dark is the default when no preference exists; native launch and loading backgrounds are dark. A saved Light preference still opens the library in Light mode (the native launch placeholder is intentionally dark).
 - Performance Mode auto-scroll pauses while a finger is touching the sheet, lets manual scrolling take over, and resumes from that position on release/cancel. Wrapping, 6–28 font range and default 12 remain unchanged.
 
-**Validation:** 95 pure Dart tests pass, including exact register transitions, both scrub directions/endpoints and deterministic chord PCM. Direct Dart analyzer reports no issues. Added Flutter regression tests cover scrubbing, lifecycle, initial theme and touch override; execution is blocked by this environment’s read-only Flutter SDK cache. See [verification](verification.md). Physical acceptance must check scrub responsiveness/sound, seam crossings, cold launch with both saved themes, and drag/release during auto-scroll.
+**Validation:** all **140 tests pass** (95 pure Dart + 45 Flutter), and Flutter analyzer reports no issues. Previously blocked UI tests now run. The old theme workflow test was updated to exercise both Light and Dark from the new dark default. Phone-sized widget previews and fixed-layout checks cover portrait and landscape. See [verification](verification.md). Still test audible chord playback, scrubbing latency, Stop and the centered layout on the iPhone.
 
 Existing device validation: tuner, conventional metronome, recording/playback, A/B playback, import, tab editor and Performance Mode wrapping. Outstanding Stage 8 acceptance remains text/audio export, backup creation/restore, iCloud Files behavior and longer recordings. See [iPhone checklist](iphone-checklist.md).
 

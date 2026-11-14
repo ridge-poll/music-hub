@@ -1,3 +1,16 @@
+# Verification — 14 November 2026, Circle repair (1.2.1+13)
+
+- **140 tests passed:** complete 95-test pure Dart suite and complete 45-test Flutter suite. **Flutter analyzer: no issues.** Formatting and diff checks pass.
+- Reproduced the playback failure through `NativeCircleAudio.play`: `Isolate.run` rejected the closure because it captured `NativeCircleAudio.tail`, an unsendable Future. A top-level rendering helper now confines isolate input to the chord. The regression runs a real isolate and writes/reads real WAV files, with only the platform player/session mocked; it verifies first playback, cached replay and Stop during source preparation followed by retry.
+- The fixed-screen test verifies no Scrollable or ExpansionTile, exact centering in the safe body, and controls below the circle at 390×844, 320×568 and 844×390. A dark-mode widget preview was inspected; it is not a device screenshot.
+- The full suite now exercises the previously unrun Circle, startup-theme and Performance touch-override regressions. The theme workflow test's old light-default assumption was corrected, retaining assertions for both saved Light and saved Dark settings.
+- User physically validated startup theme and Performance Mode touch/auto-scroll on 14 November. Audible Circle playback, responsiveness while scrubbing, Stop/interruption and comfortable placement still need iPhone confirmation. No new native build/device-audio claim is made.
+- Native dependencies, database, backup format, tuner and Rhythm are unchanged. Unrelated existing Xcode/plist/lockfile/README edits remain outside this commit.
+
+Use the complete reproduction commands below, adding `test/circle_test.dart` to the pure suite and `test/circle_screen_test.dart test/circle_audio_test.dart` to the Flutter suite. Earlier test limitations below are historical and superseded by this run.
+
+---
+
 # Verification — 12 November 2026, Circle of Fifths (1.2.0+12)
 
 - **95 pure Dart tests passed**, including all existing model, SQLite/file, backup and DSP tests plus three Circle tests. Used the package test runner directly with the current package configuration; the normal `dart test` entry attempted an unavailable SQLite asset download. No dependency or lockfile changes were made by this feature.

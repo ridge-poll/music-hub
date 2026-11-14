@@ -1,3 +1,4 @@
+import 'preview_support.dart';
 import 'dart:io';
 import 'package:music_hub/audio_files.dart';
 import 'package:music_hub/store.dart';
@@ -100,6 +101,53 @@ void main() {
       await tester.pumpWidget(const SizedBox());
       expect(audio.disposed, isTrue);
       expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets(
+    'fixed centered wheel has no dropdown or vertical scroll at phone sizes',
+    (tester) async {
+      await preparePreview(tester);
+      for (final size in [
+        const Size(390, 844),
+        const Size(320, 568),
+        const Size(844, 390),
+      ]) {
+        tester.view.physicalSize = size;
+        await tester.pumpWidget(
+          previewHost(
+            MaterialApp(
+              debugShowCheckedModeBanner: false,
+              theme: ThemeData(
+                colorScheme: ColorScheme.fromSeed(
+                  seedColor: const Color(0xFF276752),
+                  brightness: Brightness.dark,
+                ),
+              ),
+              home: CircleScreen(audio: FakeChordAudio()),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final wheel = find.byWidgetPredicate(
+          (w) => w is CustomPaint && w.painter is CirclePainter,
+        );
+        final area = find.byWidgetPredicate((w) => w is LayoutBuilder);
+        final rect = tester.getRect(wheel);
+        expect(
+          tester.getCenter(wheel).dy,
+          closeTo(tester.getCenter(area).dy, 1),
+        );
+        expect(find.byType(Scrollable), findsNothing);
+        expect(find.byType(ExpansionTile), findsNothing);
+        expect(find.text('Chord names'), findsNothing);
+        expect(
+          rect.bottom,
+          lessThan(tester.getRect(find.byTooltip('Play selected chord')).top),
+        );
+        expect(tester.takeException(), isNull);
+        if (size.width == 390) await capturePreview(tester, 'circle-centered');
+        await tester.pumpWidget(const SizedBox());
+      }
     },
   );
   testWidgets('auto-scroll yields to held touch and resumes on release', (

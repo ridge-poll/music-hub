@@ -5,6 +5,11 @@ import 'package:audio_session/audio_session.dart';
 import 'package:just_audio/just_audio.dart';
 import 'circle.dart';
 
+// Keep this closure outside the controller: capturing its async context also
+// captures player/future state that cannot be sent to another isolate.
+Future<List<int>> _renderChord(CircleChord chord) =>
+    Isolate.run(() => renderCircleChord(chord));
+
 abstract class CircleAudio {
   Future<void> play(CircleChord chord);
   Future<void> stop();
@@ -12,7 +17,9 @@ abstract class CircleAudio {
 }
 
 class NativeCircleAudio implements CircleAudio {
-  final player = AudioPlayer(handleInterruptions: false);
+  NativeCircleAudio({AudioPlayer? player})
+    : player = player ?? AudioPlayer(handleInterruptions: false);
+  final AudioPlayer player;
   final subscriptions = <StreamSubscription<dynamic>>[];
   Future<void> tail = Future.value();
   Directory? directory;
@@ -47,7 +54,7 @@ class NativeCircleAudio implements CircleAudio {
       directory ??= await Directory.systemTemp.createTemp('music_hub_circle_');
       final file = File('${directory!.path}/${chord.root}-${chord.minor}.wav');
       if (!await file.exists()) {
-        final bytes = await Isolate.run(() => renderCircleChord(chord));
+        final bytes = await _renderChord(chord);
         if (disposed || token != generation) return;
         await file.writeAsBytes(bytes);
       }

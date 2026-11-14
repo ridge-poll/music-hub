@@ -193,8 +193,20 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Metronome'), findsOneWidget);
       expect(find.text('Rhythm'), findsOneWidget);
+      expect(find.text('Circle of Fifths'), findsOneWidget);
       await tester.tap(find.text('Settings'));
       await tester.pumpAndSettle();
+      expect(
+        tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
+        isTrue,
+      );
+      await tester.tap(find.byType(SwitchListTile));
+      await flush(tester);
+      expect(await tester.runAsync(() => store.setting('dark_mode')), 'false');
+      expect(
+        Theme.of(tester.element(find.byType(SwitchListTile))).brightness,
+        Brightness.light,
+      );
       await tester.tap(find.byType(SwitchListTile));
       await flush(tester);
       expect(await tester.runAsync(() => store.setting('dark_mode')), 'true');
